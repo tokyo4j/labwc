@@ -24,6 +24,7 @@ server_protocols = [
 	wl_protocol_dir / 'staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml',
 	wl_protocol_dir / 'staging/ext-image-capture-source/ext-image-capture-source-v1.xml',
 	wl_protocol_dir / 'staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml',
+	wl_protocol_dir / 'unstable/text-input/text-input-unstable-v1.xml',
 	'cosmic-workspace-unstable-v1.xml',
 	'ext-workspace-v1.xml',
 	'wlr-layer-shell-unstable-v1.xml',
