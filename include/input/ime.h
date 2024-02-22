@@ -58,6 +58,7 @@ struct input_method_popup {
 struct text_input {
 	struct input_method_relay *relay;
 	struct wlr_text_input_v3 *input;
+	bool v1;
 	struct wl_list link;
 
 	struct wl_listener enable;
