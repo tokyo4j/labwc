@@ -252,7 +252,7 @@ static struct wlr_box
 view_get_edge_snap_box(struct view *view, struct output *output,
 		enum view_edge edge)
 {
-	struct wlr_box usable = output_usable_area_scaled(output);
+	struct wlr_box usable = output_usable_area_in_layout_coords(output);
 	int x_offset = edge == VIEW_EDGE_RIGHT
 		? (usable.width + rc.gap) / 2 : rc.gap;
 	int y_offset = edge == VIEW_EDGE_DOWN
@@ -988,14 +988,6 @@ view_apply_maximized_geometry(struct view *view)
 	assert(output_is_usable(output));
 
 	struct wlr_box box = output_usable_area_in_layout_coords(output);
-	if (box.height == output->wlr_output->height
-			&& output->wlr_output->scale != 1) {
-		box.height /= output->wlr_output->scale;
-	}
-	if (box.width == output->wlr_output->width
-			&& output->wlr_output->scale != 1) {
-		box.width /= output->wlr_output->scale;
-	}
 
 	/*
 	 * If one axis (horizontal or vertical) is unmaximized, it
