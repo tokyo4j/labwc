@@ -541,6 +541,13 @@ process_cursor_motion(struct server *server, uint32_t time)
 		}
 	}
 
+	if (seat->pressed.view
+			&& server->pending_move_count
+			&& ++server->pending_move_count >= 10) {
+		server->pending_move_count = 0;
+		interactive_begin(seat->pressed.view, LAB_INPUT_STATE_MOVE, 0);
+	}
+
 	cursor_update_common(server, &ctx, time, /*cursor_has_moved*/ true);
 }
 
@@ -1017,6 +1024,8 @@ cursor_button_release(struct seat *seat, uint32_t button,
 	struct wlr_surface *pressed_surface = seat->pressed.surface;
 
 	seat_reset_pressed(seat);
+
+	server->pending_move_count = 0;
 
 	if (server->input_mode == LAB_INPUT_STATE_MENU) {
 		if (close_menu) {

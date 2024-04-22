@@ -247,6 +247,7 @@ struct server {
 
 	/* cursor interactive */
 	enum input_mode input_mode;
+	int pending_move_count;
 	struct view *grabbed_view;
 	double grab_x, grab_y;
 	struct wlr_box grab_box;

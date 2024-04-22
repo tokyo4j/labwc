@@ -237,7 +237,7 @@ handle_request_move(struct wl_listener *listener, void *data)
 	 */
 	struct view *view = wl_container_of(listener, view, request_move);
 	if (view == view->server->seat.pressed.view) {
-		interactive_begin(view, LAB_INPUT_STATE_MOVE, 0);
+		view->server->pending_move_count = 1;
 	}
 }
 
