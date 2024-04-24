@@ -22,6 +22,7 @@
 #include "menu/menu.h"
 #include "regions.h"
 #include "resistance.h"
+#include "resize-overlay.h"
 #include "ssd.h"
 #include "view.h"
 
@@ -268,7 +269,11 @@ process_cursor_resize(struct server *server, uint32_t time)
 			server->grab_box.width - new_view_geo.width;
 	}
 
-	view_move_resize(view, new_view_geo);
+	if (rc.resize_drawcontents) {
+		view_move_resize(view, new_view_geo);
+	} else {
+		resize_overlay_update(view, new_view_geo);
+	}
 }
 
 void
@@ -1096,6 +1101,8 @@ cursor_finish_button_release(struct seat *seat)
 
 	if (server->input_mode == LAB_INPUT_STATE_MOVE
 			|| server->input_mode == LAB_INPUT_STATE_RESIZE) {
+		/* Finalize resize when <drawContents> is yes */
+		resize_overlay_finish(server->grabbed_view);
 		/* Exit interactive move/resize mode */
 		interactive_finish(server->grabbed_view);
 		return true;

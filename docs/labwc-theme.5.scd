@@ -283,6 +283,30 @@ elements are not listed here, but are supported.
 *magnifier.border.color*
 	Color of the magnfier window border. Default is #ff0000 (red).
 
+*resize.overlay.bg.enabled*
+	Show a filled rectangle as an overlay while resizing with
+	<resize><drawContents> set to no. Default is yes for hardware-based
+	renderer and no for software-based renderers.
+
+*resize.overlay.border.enabled*
+	Show an outlined rectangle as an overlay while resizing with
+	<resize><drawContents> set to no. Default is yes.
+
+*resize.overlay.bg.color*
+	Color of a filled rectangle shown as an overlay while resizing with
+	<resize><drawContents> set to no. Default is #8080b380.
+
+*resize.overlay.border.width*
+	Border width of an outlined rectangle shown as an overlay while resizing
+	with <resize><drawContents> set to no. Inherits `osd.border.width`
+	if not set.
+
+*resize.overlay.border.color*
+	Color(s) of an outlined rectangle shown as an overlay while resizing
+	with <resize><drawContents> set to no.
+	Possible values and the default value are the same as those of
+	*osd.window-switcher.preview.border.color*.
+
 # BUTTONS
 
 The images used for the titlebar icons are referred to as buttons.

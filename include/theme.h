@@ -93,6 +93,8 @@ struct theme {
 	struct overlay_theme
 		snapping_overlay_region, snapping_overlay_edge;
 
+	struct overlay_theme resize_overlay;
+
 	/* window drop-shadows */
 	int window_active_shadow_size;
 	int window_inactive_shadow_size;

@@ -26,20 +26,15 @@ void overlay_reconfigure(struct seat *seat)
 }
 
 static void
-show_overlay(struct seat *seat, struct overlay_rect **rect, struct wlr_box *box)
+show_overlay(struct seat *seat, struct overlay_rect *rect, struct wlr_box *box)
 {
 	struct server *server = seat->server;
 	struct view *view = server->grabbed_view;
 	assert(view);
 
-	if (!*rect) {
-		overlay_reconfigure(seat);
-		assert(*rect);
-	}
+	overlay_rect_set_size(rect, box->width, box->height);
 
-	overlay_rect_set_size(*rect, box->width, box->height);
-
-	struct wlr_scene_node *node = &(*rect)->tree->node;
+	struct wlr_scene_node *node = &rect->tree->node;
 	wlr_scene_node_reparent(node, view->scene_tree->node.parent);
 	wlr_scene_node_place_below(node, &view->scene_tree->node);
 	wlr_scene_node_set_position(node, box->x, box->y);
@@ -74,7 +69,11 @@ show_region_overlay(struct seat *seat, struct region *region)
 	inactivate_overlay(&seat->overlay);
 	seat->overlay.active.region = region;
 
-	show_overlay(seat, &seat->overlay.region_rect, &region->geo);
+	if (!seat->overlay.region_rect) {
+		overlay_reconfigure(seat);
+		assert(seat->overlay.region_rect);
+	}
+	show_overlay(seat, seat->overlay.region_rect, &region->geo);
 }
 
 /* TODO: share logic with view_get_edge_snap_box() */
@@ -112,7 +111,11 @@ handle_edge_overlay_timeout(void *data)
 		&& seat->overlay.active.output);
 	struct wlr_box box = get_edge_snap_box(seat->overlay.active.edge,
 		seat->overlay.active.output);
-	show_overlay(seat, &seat->overlay.edge_rect, &box);
+	if (!seat->overlay.edge_rect) {
+		overlay_reconfigure(seat);
+		assert(seat->overlay.edge_rect);
+	}
+	show_overlay(seat, seat->overlay.edge_rect, &box);
 	return 0;
 }
 
@@ -177,9 +180,7 @@ show_edge_overlay(struct seat *seat, enum view_edge edge,
 		wl_event_source_timer_update(seat->overlay.timer, delay);
 	} else {
 		/* Show overlay now */
-		struct wlr_box box = get_edge_snap_box(seat->overlay.active.edge,
-			seat->overlay.active.output);
-		show_overlay(seat, &seat->overlay.edge_rect, &box);
+		handle_edge_overlay_timeout(seat);
 	}
 }
 
