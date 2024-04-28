@@ -498,8 +498,17 @@ void interactive_anchor_to_cursor(struct view *view, struct wlr_box *geometry);
 void interactive_begin(struct view *view, enum input_mode mode, uint32_t edges);
 void interactive_finish(struct view *view);
 void interactive_cancel(struct view *view);
-/* Possibly returns VIEW_EDGE_CENTER if <topMaximize> is yes */
-enum view_edge edge_from_cursor(struct seat *seat, struct output **dest_output);
+
+struct edge_snap_info {
+	/* 8-state (+VIEW_TILED_CENTER) direction of window snapping */
+	enum view_tiled_state tiled_state;
+	/* 4-state edge to which window is snapped */
+	enum view_edge edge;
+	/* Output to which a window will be snapped */
+	struct output *output;
+};
+
+struct edge_snap_info get_edge_snap_info(struct seat *seat);
 
 void output_init(struct server *server);
 void output_manager_init(struct server *server);

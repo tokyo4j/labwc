@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <wayland-util.h>
 #include <wlr/util/box.h>
+#include <wlr/types/wlr_output_layout.h>
 #include <xkbcommon/xkbcommon.h>
 
 #define LAB_MIN_VIEW_HEIGHT 60
@@ -50,6 +51,23 @@ enum view_edge {
 	VIEW_EDGE_UP,
 	VIEW_EDGE_DOWN,
 	VIEW_EDGE_CENTER,
+};
+
+/* Bitset of wlr_direction passed to wlr_xdg_toplevel_set_tiled() */
+enum view_tiled_state {
+	VIEW_TILED_NONE = 0,
+	VIEW_TILED_UP = WLR_DIRECTION_UP | (WLR_DIRECTION_LEFT | WLR_DIRECTION_RIGHT),
+	VIEW_TILED_DOWN = WLR_DIRECTION_DOWN | (WLR_DIRECTION_LEFT | WLR_DIRECTION_RIGHT),
+	VIEW_TILED_LEFT = WLR_DIRECTION_LEFT | (WLR_DIRECTION_UP | WLR_DIRECTION_DOWN),
+	VIEW_TILED_RIGHT = WLR_DIRECTION_RIGHT | (WLR_DIRECTION_UP | WLR_DIRECTION_DOWN),
+
+	VIEW_TILED_UPLEFT = WLR_DIRECTION_UP | WLR_DIRECTION_LEFT,
+	VIEW_TILED_UPRIGHT = WLR_DIRECTION_UP | WLR_DIRECTION_RIGHT,
+	VIEW_TILED_DOWNLEFT = WLR_DIRECTION_DOWN | WLR_DIRECTION_LEFT,
+	VIEW_TILED_DOWNRIGHT = WLR_DIRECTION_DOWN | WLR_DIRECTION_RIGHT,
+
+	VIEW_TILED_CENTER = WLR_DIRECTION_UP | WLR_DIRECTION_DOWN
+						| WLR_DIRECTION_LEFT | WLR_DIRECTION_RIGHT,
 };
 
 enum view_wants_focus {
@@ -188,7 +206,7 @@ struct view {
 	bool fullscreen;
 	bool tearing_hint;
 	bool visible_on_all_workspaces;
-	enum view_edge tiled;
+	enum view_tiled_state tiled;
 	uint32_t edges_visible;  /* enum wlr_edges bitset */
 	bool inhibits_keybinds;
 	xkb_layout_index_t keyboard_layout;
@@ -507,8 +525,9 @@ void view_adjust_for_layout_change(struct view *view);
 void view_move_to_edge(struct view *view, enum view_edge direction, bool snap_to_windows);
 void view_grow_to_edge(struct view *view, enum view_edge direction);
 void view_shrink_to_edge(struct view *view, enum view_edge direction);
-void view_snap_to_edge(struct view *view, enum view_edge direction,
-	bool across_outputs, bool store_natural_geometry);
+void view_snap_to_edge(struct view *view, enum view_tiled_state direction,
+	struct output *output, bool store_natural_geometry);
+void view_snap_to_edge_for_action(struct view *view, enum view_edge edge);
 void view_snap_to_region(struct view *view, struct region *region, bool store_natural_geometry);
 void view_move_to_output(struct view *view, struct output *output);
 

@@ -307,31 +307,38 @@ view_edge_invert(enum view_edge edge)
 
 static struct wlr_box
 view_get_edge_snap_box(struct view *view, struct output *output,
-		enum view_edge edge)
+		enum view_tiled_state tiled_state)
 {
-	struct wlr_box usable = output_usable_area_scaled(output);
-	int x_offset = edge == VIEW_EDGE_RIGHT
-		? (usable.width + rc.gap) / 2 : rc.gap;
-	int y_offset = edge == VIEW_EDGE_DOWN
-		? (usable.height + rc.gap) / 2 : rc.gap;
+	assert(tiled_state);
+	struct wlr_box usable = output_usable_area_in_layout_coords(output);
+
+	int x_offset, y_offset;
+	if (tiled_state == VIEW_TILED_RIGHT || tiled_state == VIEW_TILED_UPRIGHT
+			|| tiled_state == VIEW_TILED_DOWNRIGHT) {
+		x_offset = (usable.width + rc.gap) / 2;
+	} else {
+		x_offset = rc.gap;
+	}
+
+	if (tiled_state == VIEW_TILED_DOWN || tiled_state == VIEW_TILED_DOWNLEFT
+			|| tiled_state == VIEW_TILED_DOWNRIGHT) {
+		y_offset = (usable.height + rc.gap) / 2;
+	} else {
+		y_offset = rc.gap;
+	}
 
 	int base_width, base_height;
-	switch (edge) {
-	case VIEW_EDGE_LEFT:
-	case VIEW_EDGE_RIGHT:
+	if (tiled_state == VIEW_TILED_UP || tiled_state == VIEW_TILED_DOWN
+			|| tiled_state == VIEW_TILED_CENTER) {
+		base_width = usable.width - 2 * rc.gap;
+	} else {
 		base_width = (usable.width - 3 * rc.gap) / 2;
+	}
+	if (tiled_state == VIEW_TILED_LEFT || tiled_state == VIEW_TILED_RIGHT
+			|| tiled_state == VIEW_TILED_CENTER) {
 		base_height = usable.height - 2 * rc.gap;
-		break;
-	case VIEW_EDGE_UP:
-	case VIEW_EDGE_DOWN:
-		base_width = usable.width - 2 * rc.gap;
+	} else {
 		base_height = (usable.height - 3 * rc.gap) / 2;
-		break;
-	default:
-	case VIEW_EDGE_CENTER:
-		base_width = usable.width - 2 * rc.gap;
-		base_height = usable.height - 2 * rc.gap;
-		break;
 	}
 
 	struct border margin = ssd_get_margin(view->ssd);
@@ -1302,7 +1309,7 @@ void
 view_set_untiled(struct view *view)
 {
 	assert(view);
-	view->tiled = VIEW_EDGE_INVALID;
+	view->tiled = VIEW_TILED_NONE;
 	view->tiled_region = NULL;
 	zfree(view->tiled_region_evacuate);
 	view_notify_tiled(view);
@@ -2101,28 +2108,47 @@ view_placement_parse(const char *policy)
 	return LAB_PLACE_INVALID;
 }
 
+static enum view_tiled_state
+view_tiled_state_from_edge(enum view_edge edge)
+{
+	switch (edge) {
+	case VIEW_EDGE_INVALID:
+		return VIEW_TILED_NONE;
+	case VIEW_EDGE_LEFT:
+		return VIEW_TILED_LEFT;
+	case VIEW_EDGE_RIGHT:
+		return VIEW_TILED_RIGHT;
+	case VIEW_EDGE_UP:
+		return VIEW_TILED_UP;
+	case VIEW_EDGE_DOWN:
+		return VIEW_TILED_DOWN;
+	case VIEW_EDGE_CENTER:
+		return VIEW_TILED_CENTER;
+	default:
+		return VIEW_TILED_NONE;
+	}
+}
+
 void
-view_snap_to_edge(struct view *view, enum view_edge edge,
-			bool across_outputs, bool store_natural_geometry)
+view_snap_to_edge_for_action(struct view *view, enum view_edge edge)
 {
 	assert(view);
+	assert(edge);
 
-	if (view->fullscreen) {
+	if (!view->tiled || view->maximized != VIEW_AXIS_NONE) {
+		view_snap_to_edge(view, view_tiled_state_from_edge(edge),
+			view->output, /* store_natural_geometry */ true);
 		return;
 	}
 
 	struct output *output = view->output;
-	if (!output_is_usable(output)) {
-		wlr_log(WLR_ERROR, "view has no output, not snapping to edge");
-		return;
-	}
+	enum wlr_direction forward = get_wlr_direction(edge);
+	enum wlr_direction backward = opposite_direction(forward);
+	unsigned int tiled_state = view->tiled;
 
-	view_set_shade(view, false);
-
-	if (across_outputs && view->tiled == edge && view->maximized == VIEW_AXIS_NONE) {
-		/* We are already tiled for this edge; try to switch outputs */
+	if ((view->tiled & forward) && !(view->tiled & backward)) {
+		/* If already tiled to the given direction, try to switch outputs */
 		output = view_get_adjacent_output(view, edge, /* wrap */ false);
-
 		if (!output) {
 			/*
 			 * No more output to move to
@@ -2137,8 +2163,33 @@ view_snap_to_edge(struct view *view, enum view_edge edge,
 		}
 
 		/* When switching outputs, jump to the opposite edge */
-		edge = view_edge_invert(edge);
+		tiled_state |= backward;
+		tiled_state &= ~forward;
+	} else {
+		tiled_state = view_tiled_state_from_edge(edge);
 	}
+
+	view_snap_to_edge(view, tiled_state, output,
+		/* store_natural_geometry */ true);
+}
+
+void
+view_snap_to_edge(struct view *view, enum view_tiled_state tiled_state,
+		struct output *output, bool store_natural_geometry)
+{
+	assert(view);
+	assert(tiled_state);
+
+	if (view->fullscreen) {
+		return;
+	}
+
+	if (!output_is_usable(output)) {
+		wlr_log(WLR_ERROR, "view has no output, not snapping to edge");
+		return;
+	}
+
+	view_set_shade(view, false);
 
 	if (view->maximized != VIEW_AXIS_NONE) {
 		/* Unmaximize + keep using existing natural_geometry */
@@ -2151,7 +2202,7 @@ view_snap_to_edge(struct view *view, enum view_edge edge,
 	}
 	view_set_untiled(view);
 	view_set_output(view, output);
-	view->tiled = edge;
+	view->tiled = tiled_state;
 	view_notify_tiled(view);
 	view_apply_tiled_geometry(view);
 }

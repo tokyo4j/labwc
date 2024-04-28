@@ -336,16 +336,21 @@ this is for compatibility with Openbox.
 
 ## WINDOW SNAPPING
 
-Windows may be "snapped" to an edge or user-defined region of an output when
-activated with SnapToEdge actions or, optionally, by dragging windows to the
-edges of an output. Edge snapping causes a window to occupy half of its output,
-extending outward from the snapped edge.
+Windows may be "snapped" to an edge of an output when activated with SnapToEdge
+actions or, optionally, by dragging windows to the edges or corners of an
+output. Edge snapping causes a window to occupy half or quarter of its output,
+extending outward from the snapped edge or corner.
 
 *<snapping><range>*
-	If an interactive move ends with the cursor a maximum distance *range*,
-	(in pixels) from the edge of an output, the move will trigger a
-	SnapToEdge action for that edge. A *range* of 0 disables snapping via
-	interactive moves. Default is 1.
+	If an interactive move ends with the cursor within a distance *range* (in
+	pixels) from an edge of an output, the window is snapped to the edge.
+	A *range* of 0 disables snapping via interactive moves. Default is 1.
+
+*<snapping><cornerRange>*
+	If an interactive move ends with the cursor within a distance *range* (in
+	pixels) from one edge and also within a distance *cornerRange* from another
+	edge, the window is quartered and snapped to the corner. A *cornerRange* of 0
+	disables corner-snapping. Default is 50.
 
 *<snapping><overlay><enabled>* [yes|no]
 	Show an overlay when snapping to a window to an edge. Default is yes.
