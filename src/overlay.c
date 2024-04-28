@@ -89,7 +89,7 @@ inactivate_overlay(struct overlay *overlay)
 			&overlay->edge_rect.tree->node, false);
 	}
 	overlay->active.region = NULL;
-	overlay->active.edge = VIEW_EDGE_INVALID;
+	overlay->active.tiled_state = VIEW_TILED_NONE;
 	overlay->active.output = NULL;
 	if (overlay->timer) {
 		wl_event_source_timer_update(overlay->timer, 0);
@@ -109,29 +109,29 @@ show_region_overlay(struct seat *seat, struct region *region)
 }
 
 /* TODO: share logic with view_get_edge_snap_box() */
-static struct wlr_box get_edge_snap_box(enum view_edge edge, struct output *output)
+static struct wlr_box get_edge_snap_box(enum view_tiled_state tiled_state,
+		struct output *output)
 {
-	struct wlr_box box = output_usable_area_in_layout_coords(output);
-	switch (edge) {
-	case VIEW_EDGE_RIGHT:
+	struct wlr_box box = output_usable_area_scaled(output);
+
+	if (tiled_state == VIEW_TILED_RIGHT || tiled_state == VIEW_TILED_UPRIGHT
+			|| tiled_state == VIEW_TILED_DOWNRIGHT) {
 		box.x += box.width / 2;
-		/* fallthrough */
-	case VIEW_EDGE_LEFT:
-		box.width /= 2;
-		break;
-	case VIEW_EDGE_DOWN:
-		box.y += box.height / 2;
-		/* fallthrough */
-	case VIEW_EDGE_UP:
-		box.height /= 2;
-		break;
-	case VIEW_EDGE_CENTER:
-		/* <topMaximize> */
-		break;
-	default:
-		/* not reached */
-		assert(false);
 	}
+	if (tiled_state == VIEW_TILED_DOWN || tiled_state == VIEW_TILED_DOWNLEFT
+			|| tiled_state == VIEW_TILED_DOWNRIGHT) {
+		box.y += box.height / 2;
+	}
+
+	if (!(tiled_state == VIEW_TILED_UP || tiled_state == VIEW_TILED_DOWN
+			|| tiled_state == VIEW_TILED_CENTER)) {
+		box.width /= 2;
+	}
+	if (!(tiled_state == VIEW_TILED_LEFT || tiled_state == VIEW_TILED_RIGHT
+			|| tiled_state == VIEW_TILED_CENTER)) {
+		box.height /= 2;
+	}
+
 	return box;
 }
 
@@ -139,60 +139,39 @@ static int
 handle_edge_overlay_timeout(void *data)
 {
 	struct seat *seat = data;
-	assert(seat->overlay.active.edge != VIEW_EDGE_INVALID
+	assert(seat->overlay.active.tiled_state != VIEW_TILED_NONE
 		&& seat->overlay.active.output);
-	struct wlr_box box = get_edge_snap_box(seat->overlay.active.edge,
+	struct wlr_box box = get_edge_snap_box(seat->overlay.active.tiled_state,
 		seat->overlay.active.output);
 	show_overlay(seat, &seat->overlay.edge_rect, &box);
 	return 0;
 }
 
-static enum wlr_direction
-get_wlr_direction(enum view_edge edge)
-{
-	switch (edge) {
-	case VIEW_EDGE_LEFT:
-		return WLR_DIRECTION_LEFT;
-	case VIEW_EDGE_RIGHT:
-		return WLR_DIRECTION_RIGHT;
-	case VIEW_EDGE_UP:
-	case VIEW_EDGE_CENTER:
-		return WLR_DIRECTION_UP;
-	case VIEW_EDGE_DOWN:
-		return WLR_DIRECTION_DOWN;
-	default:
-		/* not reached */
-		assert(false);
-		return 0;
-	}
-}
-
 static bool
-edge_has_adjacent_output_from_cursor(struct seat *seat, struct output *output,
-		enum view_edge edge)
+adjacent_output_exists_from_cursor(struct seat *seat, struct output *output,
+		enum wlr_direction direction)
 {
 	return wlr_output_layout_adjacent_output(
-		seat->server->output_layout, get_wlr_direction(edge),
+		seat->server->output_layout, direction,
 		output->wlr_output, seat->cursor->x, seat->cursor->y);
 }
 
 static void
-show_edge_overlay(struct seat *seat, enum view_edge edge,
-		struct output *output)
+show_edge_overlay(struct seat *seat, struct edge_snap_info info)
 {
 	if (!rc.snap_overlay_enabled) {
 		return;
 	}
-	if (seat->overlay.active.edge == edge
-			&& seat->overlay.active.output == output) {
+	if (seat->overlay.active.tiled_state == info.tiled_state
+			&& seat->overlay.active.output == info.output) {
 		return;
 	}
 	inactivate_overlay(&seat->overlay);
-	seat->overlay.active.edge = edge;
-	seat->overlay.active.output = output;
+	seat->overlay.active.tiled_state = info.tiled_state;
+	seat->overlay.active.output = info.output;
 
 	int delay;
-	if (edge_has_adjacent_output_from_cursor(seat, output, edge)) {
+	if (adjacent_output_exists_from_cursor(seat, info.output, info.primary_direction)) {
 		delay = rc.snap_overlay_delay_inner;
 	} else {
 		delay = rc.snap_overlay_delay_outer;
@@ -208,8 +187,7 @@ show_edge_overlay(struct seat *seat, enum view_edge edge,
 		wl_event_source_timer_update(seat->overlay.timer, delay);
 	} else {
 		/* Show overlay now */
-		struct wlr_box box = get_edge_snap_box(seat->overlay.active.edge,
-			seat->overlay.active.output);
+		struct wlr_box box = get_edge_snap_box(info.tiled_state, info.output);
 		show_overlay(seat, &seat->overlay.edge_rect, &box);
 	}
 }
@@ -229,10 +207,9 @@ overlay_update(struct seat *seat)
 	}
 
 	/* Edge-snapping overlay */
-	struct output *output;
-	enum view_edge edge = edge_from_cursor(seat, &output);
-	if (edge != VIEW_EDGE_INVALID) {
-		show_edge_overlay(seat, edge, output);
+	struct edge_snap_info info = get_edge_snap_info(seat);
+	if (info.tiled_state != VIEW_TILED_NONE) {
+		show_edge_overlay(seat, info);
 		return;
 	}
 
