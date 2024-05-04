@@ -21,6 +21,7 @@
 #include "xwayland-shell-v1-protocol.h"
 #endif
 #include "drm-lease-v1-protocol.h"
+#include "action.h"
 #include "config/rcxml.h"
 #include "config/session.h"
 #include "decorations.h"
@@ -143,6 +144,19 @@ handle_sigchld(int signal, void *data)
 	if (info.si_pid == server->primary_client_pid) {
 		wlr_log(WLR_INFO, "primary client %ld exited", (long)info.si_pid);
 		wl_display_terminate(server->wl_display);
+		return 0;
+	}
+
+	struct running_cmd *cmd, *tmp;
+	wl_list_for_each_safe(cmd, tmp, &server->running_cmds, link) {
+		if (cmd->pid == info.si_pid) {
+			waitpid(cmd->pid, NULL, 0);
+			/* TODO: WLR_INFO */
+			wlr_log(WLR_ERROR, "(DEBUG) action command %s exited", cmd->cmd);
+			wl_list_remove(&cmd->link);
+			free(cmd->cmd);
+			free(cmd);
+		}
 	}
 
 	return 0;
@@ -297,6 +311,7 @@ void
 server_init(struct server *server)
 {
 	server->primary_client_pid = -1;
+	wl_list_init(&server->running_cmds);
 	server->wl_display = wl_display_create();
 	if (!server->wl_display) {
 		wlr_log(WLR_ERROR, "cannot allocate a wayland display");

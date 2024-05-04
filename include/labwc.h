@@ -349,6 +349,7 @@ struct server {
 	struct wl_list menus;
 
 	pid_t primary_client_pid;
+	struct wl_list running_cmds;
 };
 
 #define LAB_NR_LAYERS (4)

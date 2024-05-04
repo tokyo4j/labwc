@@ -3,6 +3,7 @@
 #define LABWC_ACTION_H
 
 #include <stdbool.h>
+#include <sys/types.h>
 #include <wayland-util.h>
 
 struct view;
@@ -17,6 +18,12 @@ struct action {
 
 	uint32_t type;        /* enum action_type */
 	struct wl_list args;  /* struct action_arg.link */
+};
+
+struct running_cmd {
+	char *cmd;
+	pid_t pid;
+	struct wl_list link;
 };
 
 struct action *action_create(const char *action_name);

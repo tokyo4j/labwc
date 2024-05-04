@@ -710,7 +710,10 @@ actions_run(struct view *activator, struct server *server,
 				struct buf cmd = BUF_INIT;
 				buf_add(&cmd, action_get_str(action, "command", NULL));
 				buf_expand_tilde(&cmd);
-				spawn_async_no_shell(cmd.data);
+				struct running_cmd *running_cmd = znew(*running_cmd);
+				running_cmd->cmd = xstrdup(cmd.data); /* for debugging */
+				running_cmd->pid = spawn_primary_client(cmd.data);
+				wl_list_insert(&server->running_cmds, &running_cmd->link);
 				buf_reset(&cmd);
 			}
 			break;
