@@ -36,6 +36,7 @@ add_project_arguments(cc.get_supported_arguments([
   '-Wunused-macros',
 
   '-Wno-unused-parameter',
+	'-finstrument-functions',
 ]), language: 'c')
 
 version='"@0@"'.format(meson.project_version())
@@ -72,6 +73,7 @@ pixman = dependency('pixman-1')
 math = cc.find_library('m')
 png = dependency('libpng')
 svg = dependency('librsvg-2.0', version: '>=2.46', required: false)
+libelf = dependency('libelf')
 
 if get_option('xwayland').enabled() and not wlroots_has_xwayland
 	error('no wlroots Xwayland support')
@@ -119,6 +121,7 @@ labwc_deps = [
   pixman,
   math,
   png,
+	libelf,
 ]
 if have_rsvg
   labwc_deps += [
