@@ -7,18 +7,8 @@
 #include "regions.h"
 #include "view.h"
 
-struct overlay_rect {
-	struct wlr_scene_tree *tree;
-
-	bool bg_enabled;
-	struct wlr_scene_rect *bg_rect;
-
-	bool border_enabled;
-	struct multi_rect *border_rect;
-};
-
 struct overlay {
-	struct overlay_rect region_rect, edge_rect;
+	struct overlay_rect *region_rect, *edge_rect;
 
 	/* Represents currently shown or delayed overlay */
 	struct {

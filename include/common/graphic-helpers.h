@@ -4,6 +4,7 @@
 
 #include <cairo.h>
 #include <wayland-server-core.h>
+#include <theme.h>
 
 struct wlr_scene_tree;
 struct wlr_scene_rect;
@@ -37,6 +38,22 @@ struct multi_rect *multi_rect_create(struct wlr_scene_tree *parent,
 		float *colors[3], int line_width);
 
 void multi_rect_set_size(struct multi_rect *rect, int width, int height);
+
+/*
+ * Combination of multi_rect and scene_rect. Used for snapping overlay and
+ * resize overlay.
+ */
+struct overlay_rect {
+	struct wlr_scene_tree *tree;
+	struct wlr_scene_rect *bg_rect;
+	struct multi_rect *border_rect;
+	struct wl_listener destroy;
+};
+
+struct overlay_rect *overlay_rect_create(struct wlr_scene_tree *parent,
+		struct overlay_theme *theme);
+
+void overlay_rect_set_size(struct overlay_rect *overlay_rect, int width, int height);
 
 /**
  * Sets the cairo color.

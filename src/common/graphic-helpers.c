@@ -75,6 +75,55 @@ multi_rect_set_size(struct multi_rect *rect, int width, int height)
 	}
 }
 
+static void
+overlay_rect_destroy_notify(struct wl_listener *listener, void *data)
+{
+	struct overlay_rect *rect = wl_container_of(listener, rect, destroy);
+	free(rect);
+}
+
+struct overlay_rect *
+overlay_rect_create(struct wlr_scene_tree *parent,
+		struct overlay_theme *theme)
+{
+	struct overlay_rect *overlay_rect = znew(*overlay_rect);
+	overlay_rect->tree = wlr_scene_tree_create(parent);
+
+	if (theme->bg_enabled) {
+		/* Create a filled rectangle */
+		overlay_rect->bg_rect = wlr_scene_rect_create(
+			overlay_rect->tree, 0, 0, theme->bg_color);
+	}
+
+	if (theme->border_enabled) {
+		/* Create outlines */
+		float *colors[3] = {
+			theme->border_color[0],
+			theme->border_color[1],
+			theme->border_color[2],
+		};
+		overlay_rect->border_rect = multi_rect_create(
+			overlay_rect->tree, colors, theme->border_width);
+	}
+
+	overlay_rect->destroy.notify = overlay_rect_destroy_notify;
+	wl_signal_add(&overlay_rect->tree->node.events.destroy,
+		&overlay_rect->destroy);
+
+	return overlay_rect;
+}
+
+void
+overlay_rect_set_size(struct overlay_rect *overlay_rect, int width, int height)
+{
+	if (overlay_rect->bg_rect) {
+		wlr_scene_rect_set_size(overlay_rect->bg_rect, width, height);
+	}
+	if (overlay_rect->border_rect) {
+		multi_rect_set_size(overlay_rect->border_rect, width, height);
+	}
+}
+
 /* Draws a border with a specified line width */
 void
 draw_cairo_border(cairo_t *cairo, struct wlr_fbox fbox, double line_width)

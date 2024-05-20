@@ -138,13 +138,13 @@ get_special(struct server *server, struct wlr_scene_node *node)
 	if (node == &server->seat.drag.icons->node) {
 		return "seat->drag.icons";
 	}
-	if (server->seat.overlay.region_rect.tree
-			&& node == &server->seat.overlay.region_rect.tree->node) {
+	if (server->seat.overlay.region_rect
+			&& node == &server->seat.overlay.region_rect->tree->node) {
 		/* Created on-demand */
 		return "seat->overlay.region_rect";
 	}
-	if (server->seat.overlay.edge_rect.tree
-			&& node == &server->seat.overlay.edge_rect.tree->node) {
+	if (server->seat.overlay.edge_rect
+			&& node == &server->seat.overlay.edge_rect->tree->node) {
 		/* Created on-demand */
 		return "seat->overlay.edge_rect";
 	}
@@ -222,9 +222,11 @@ dump_tree(struct server *server, struct wlr_scene_node *node,
 	struct multi_rect *osd_preview_outline =
 		server->osd_state.preview_outline;
 	struct multi_rect *region_snapping_overlay_outline =
-		server->seat.overlay.region_rect.border_rect;
+		server->seat.overlay.region_rect ?
+			server->seat.overlay.region_rect->border_rect : NULL;
 	struct multi_rect *edge_snapping_overlay_outline =
-		server->seat.overlay.edge_rect.border_rect;
+		server->seat.overlay.edge_rect ?
+			server->seat.overlay.edge_rect->border_rect : NULL;
 	if ((IGNORE_MENU && node == &server->menu_tree->node)
 			|| (IGNORE_SSD && last_view
 				&& ssd_debug_is_root_node(last_view->ssd, node))

@@ -17,7 +17,7 @@ enum lab_justification {
 	LAB_JUSTIFY_RIGHT,
 };
 
-struct theme_snapping_overlay {
+struct overlay_theme {
 	bool bg_enabled;
 	bool border_enabled;
 	float bg_color[4];
@@ -90,7 +90,7 @@ struct theme {
 	int osd_workspace_switcher_boxes_width;
 	int osd_workspace_switcher_boxes_height;
 
-	struct theme_snapping_overlay
+	struct overlay_theme
 		snapping_overlay_region, snapping_overlay_edge;
 
 	/* window drop-shadows */
