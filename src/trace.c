@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <gelf.h>
 #include <libelf.h>
+#include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +20,7 @@ static struct {
 	struct sym_entry *symbols;
 	int sym_count;
 	int level;
+	int pruned_level;
 } profiler;
 
 void __attribute__((no_instrument_function))
@@ -85,6 +88,8 @@ init_profiler(void)
 
 	elf_end(elf);
 	close(fd);
+
+	profiler.pruned_level = INT_MAX;
 }
 
 
@@ -110,17 +115,44 @@ get_sym_name(uintptr_t addr)
 
 void
 __cyg_profile_func_enter(void *func, void *caller) {
+	int level = profiler.level;
+	profiler.level++;
+
 	if (!profiler.symbols) {
 		init_profiler();
 	}
-	for (int j = 0; j < profiler.level * 2; j++) {
-		fputc(' ', profiler.stream);
+
+	if (level > profiler.pruned_level) {
+		return;
 	}
-	fprintf(profiler.stream, "%s()\n", get_sym_name((uintptr_t)func));
-	profiler.level++;
+
+	char *sym_name = get_sym_name((uintptr_t)func);
+
+	static char *pruned_functions[] = {
+		"ssd_part_contains",
+		"wl_signal_add",
+		"data_buffer_begin_data_ptr_access",
+		"data_buffer_end_data_ptr_access",
+		"xzalloc",
+		"msec",
+		"resistance_move_apply",
+	};
+	for (int i = 0; i < (int)(sizeof(pruned_functions) / sizeof(pruned_functions[0])); i++) {
+		if (!strcmp(sym_name, pruned_functions[i])) {
+			profiler.pruned_level = level;
+			return;
+		}
+	}
+
+	for (int j = 0; j < level * 2; j++)
+		fputc(' ', profiler.stream);
+	fprintf(profiler.stream, "%s()\n", sym_name);
 }
 
 void
 __cyg_profile_func_exit(void *func, void *caller) {
 	profiler.level--;
+	if (profiler.level == profiler.pruned_level) {
+		profiler.pruned_level = INT_MAX;
+	}
 }
