@@ -283,6 +283,16 @@ elements are not listed here, but are supported.
 *magnifier.border.color*
 	Color of the magnfier window border. Default is #ff0000 (red).
 
+*resize.frame.thickness*
+	Thickness of outlined rectangle shown while resizing with
+	<resize><drawContents> set to no. Inherits `osd.border.width`
+	if not set.
+
+*resize.frame.color*
+	Color(s) of an outlined rectangle shown while resizing with
+	<resize><drawContents> set to no. Possible values and the default value
+	are the same as those of *osd.window-switcher.preview.border.color*.
+
 # BUTTONS
 
 The images used for the titlebar icons are referred to as buttons.
