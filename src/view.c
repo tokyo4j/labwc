@@ -1501,6 +1501,7 @@ view_set_fullscreen(struct view *view, bool fullscreen)
 		interactive_cancel(view);
 		view_store_natural_geometry(view);
 		view_invalidate_last_layout_geometry(view);
+		view_move_to_front(view);
 	}
 
 	set_fullscreen(view, fullscreen);
