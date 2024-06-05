@@ -572,9 +572,9 @@ theme_builtin(struct theme *theme, struct server *server)
 	theme->snapping_overlay_edge.border_color[0][0] = FLT_MIN;
 
 	/* inherit settings in post_processing() if not set elsewhere */
-	theme->resize_frame_thickness = INT_MIN;
-	zero_array(theme->resize_frame_color);
-	theme->resize_frame_color[0][0] = FLT_MIN;
+	theme->resize_outlines_thickness = INT_MIN;
+	zero_array(theme->resize_outlines_color);
+	theme->resize_outlines_color[0][0] = FLT_MIN;
 
 	/* magnifier */
 	parse_hexstr("#ff0000", theme->mag_border_color);
@@ -835,11 +835,11 @@ entry(struct theme *theme, const char *key, const char *value)
 		parse_hexstrs(value, theme->snapping_overlay_edge.border_color);
 	}
 
-	if (match_glob(key, "resize.frame.thickness")) {
-		theme->resize_frame_thickness = atoi(value);
+	if (match_glob(key, "resize.outlines.thickness")) {
+		theme->resize_outlines_thickness = atoi(value);
 	}
-	if (match_glob(key, "resize.frame.color")) {
-		parse_hexstrs(value, theme->resize_frame_color);
+	if (match_glob(key, "resize.outlines.color")) {
+		parse_hexstrs(value, theme->resize_outlines_color);
 	}
 
 	if (match_glob(key, "magnifier.border.width")) {
@@ -1379,11 +1379,11 @@ post_processing(struct theme *theme)
 			theme->snapping_overlay_edge.border_color);
 	}
 
-	if (theme->resize_frame_thickness == INT_MIN) {
-		theme->resize_frame_thickness = theme->osd_border_width;
+	if (theme->resize_outlines_thickness == INT_MIN) {
+		theme->resize_outlines_thickness = theme->osd_border_width;
 	}
-	if (theme->resize_frame_color[0][0] == FLT_MIN) {
-		fill_colors_with_osd_theme(theme, theme->resize_frame_color);
+	if (theme->resize_outlines_color[0][0] == FLT_MIN) {
+		fill_colors_with_osd_theme(theme, theme->resize_outlines_color);
 	}
 }
 

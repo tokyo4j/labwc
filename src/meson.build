@@ -20,7 +20,7 @@ labwc_sources = files(
   'placement.c',
   'regions.c',
   'resistance.c',
-  'resize-frame.c',
+  'resize-outlines.c',
   'seat.c',
   'server.c',
   'session-lock.c',

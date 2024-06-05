@@ -6,7 +6,7 @@
 
 struct view;
 
-void resize_frame_update(struct view *view, struct wlr_box new_geo);
-void resize_frame_finish(struct view *view);
+void resize_outlines_update(struct view *view, struct wlr_box new_geo);
+void resize_outlines_finish(struct view *view);
 
 #endif /* LABWC_RESIZE_FRAME_H */
