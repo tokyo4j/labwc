@@ -538,6 +538,8 @@ cursor_get_resize_edges(struct wlr_cursor *cursor, struct cursor_context *ctx)
 	return resize_edges;
 }
 
+static uint32_t double_click_last_button;
+
 bool
 cursor_process_motion(struct server *server, uint32_t time, double *sx, double *sy)
 {
@@ -573,16 +575,19 @@ cursor_process_motion(struct server *server, uint32_t time, double *sx, double *
 	struct mousebind *mousebind;
 	wl_list_for_each(mousebind, &rc.mousebinds, link) {
 		if (mousebind->mouse_event == MOUSE_ACTION_DRAG
-				&& mousebind->pressed_in_context) {
+				&& mousebind->action_pending) {
 			/*
 			 * Use view and resize edges from the press
 			 * event (not the motion event) to prevent
 			 * moving/resizing the wrong view
 			 */
-			mousebind->pressed_in_context = false;
+			mousebind->action_pending = false;
 			actions_run(seat->pressed.view,
 				server, &mousebind->actions,
 				seat->pressed.resize_edges);
+			if (mousebind->button == double_click_last_button) {
+				double_click_last_button = 0;
+			}
 		}
 	}
 
@@ -862,42 +867,35 @@ handle_release_mousebinding(struct server *server,
 		if (ssd_part_contains(mousebind->context, ctx->type)
 				&& mousebind->button == button
 				&& modifiers == mousebind->modifiers) {
+			bool consumed = false;
+			bool run_action = false;
 			switch (mousebind->mouse_event) {
 			case MOUSE_ACTION_RELEASE:
+				consumed = true;
+				run_action = true;
 				break;
 			case MOUSE_ACTION_CLICK:
-				if (mousebind->pressed_in_context) {
-					break;
+				if (mousebind->action_pending) {
+					consumed = true;
+					run_action = true;
 				}
-				continue;
+				break;
 			case MOUSE_ACTION_DRAG:
-				if (mousebind->pressed_in_context) {
-					/*
-					 * Swallow the release event as well as
-					 * the press one
-					 */
-					consumed_by_frame_context |=
-						mousebind->context == LAB_SSD_FRAME;
-					consumed_by_frame_context |=
-						mousebind->context == LAB_SSD_ALL;
+				if (mousebind->action_pending) {
+					consumed = true;
 				}
-				continue;
+				break;
 			default:
-				continue;
+				break;
 			}
-			consumed_by_frame_context |= mousebind->context == LAB_SSD_FRAME;
-			consumed_by_frame_context |= mousebind->context == LAB_SSD_ALL;
-			actions_run(ctx->view, server, &mousebind->actions,
-				/*resize_edges*/ 0);
-		}
-	}
-	/*
-	 * Clear "pressed" status for all bindings of this mouse button,
-	 * regardless of whether handled or not
-	 */
-	wl_list_for_each(mousebind, &rc.mousebinds, link) {
-		if (mousebind->button == button) {
-			mousebind->pressed_in_context = false;
+			if (consumed) {
+				consumed_by_frame_context |= mousebind->context == LAB_SSD_FRAME;
+				consumed_by_frame_context |= mousebind->context == LAB_SSD_ALL;
+			}
+			if (run_action) {
+				actions_run(ctx->view, server, &mousebind->actions,
+					/*resize_edges*/ 0);
+			}
 		}
 	}
 	return consumed_by_frame_context;
@@ -908,7 +906,6 @@ is_double_click(long double_click_speed, uint32_t button,
 		struct cursor_context *ctx)
 {
 	static enum ssd_part_type last_type;
-	static uint32_t last_button;
 	static struct view *last_view;
 	static struct timespec last_click;
 	struct timespec now;
@@ -917,9 +914,9 @@ is_double_click(long double_click_speed, uint32_t button,
 	long ms = (now.tv_sec - last_click.tv_sec) * 1000 +
 		(now.tv_nsec - last_click.tv_nsec) / 1000000;
 	last_click = now;
-	if (last_button != button || last_view != ctx->view
+	if (double_click_last_button != button || last_view != ctx->view
 			|| last_type != ctx->type) {
-		last_button = button;
+		double_click_last_button = button;
 		last_view = ctx->view;
 		last_type = ctx->type;
 		return false;
@@ -929,7 +926,7 @@ is_double_click(long double_click_speed, uint32_t button,
 		 * End sequence so that third click is not considered a
 		 * double-click
 		 */
-		last_button = 0;
+		double_click_last_button = 0;
 		last_view = NULL;
 		last_type = 0;
 		return true;
@@ -956,39 +953,42 @@ handle_press_mousebinding(struct server *server, struct cursor_context *ctx,
 		if (ssd_part_contains(mousebind->context, ctx->type)
 				&& mousebind->button == button
 				&& modifiers == mousebind->modifiers) {
+			bool consumed = false;
+			bool run_action = false;
+			bool action_pending = false;
 			switch (mousebind->mouse_event) {
 			case MOUSE_ACTION_DRAG: /* fallthrough */
+				consumed = true;
+				action_pending = true;
+				break;
 			case MOUSE_ACTION_CLICK:
-				/*
-				 * DRAG and CLICK actions will be processed on
-				 * the release event, unless the press event is
-				 * counted as a DOUBLECLICK.
-				 */
 				if (!double_click) {
-					/*
-					 * Swallow the press event as well as
-					 * the release one
-					 */
-					consumed_by_frame_context |=
-						mousebind->context == LAB_SSD_FRAME;
-					consumed_by_frame_context |=
-						mousebind->context == LAB_SSD_ALL;
-					mousebind->pressed_in_context = true;
+					consumed = true;
+					action_pending = true;
 				}
-				continue;
+				break;
 			case MOUSE_ACTION_DOUBLECLICK:
-				if (!double_click) {
-					continue;
+				if (double_click) {
+					consumed = true;
+					run_action = true;
 				}
 				break;
 			case MOUSE_ACTION_PRESS:
-				break;
+				consumed = true;
+				run_action = true;
 			default:
-				continue;
+				break;
 			}
-			consumed_by_frame_context |= mousebind->context == LAB_SSD_FRAME;
-			consumed_by_frame_context |= mousebind->context == LAB_SSD_ALL;
-			actions_run(ctx->view, server, &mousebind->actions, resize_edges);
+			if (consumed) {
+				consumed_by_frame_context |= mousebind->context == LAB_SSD_FRAME;
+				consumed_by_frame_context |= mousebind->context == LAB_SSD_ALL;
+			}
+			if (action_pending) {
+				mousebind->action_pending = true;
+			}
+			if (run_action) {
+				actions_run(ctx->view, server, &mousebind->actions, resize_edges);
+			}
 		}
 	}
 	return consumed_by_frame_context;
@@ -1075,6 +1075,17 @@ cursor_process_button_press(struct seat *seat, uint32_t button, uint32_t time_ms
 	return false;
 }
 
+static void
+reset_mousebind_pending_states(uint32_t button)
+{
+	struct mousebind *mousebind;
+	wl_list_for_each(mousebind, &rc.mousebinds, link) {
+		if (mousebind->button == button) {
+			mousebind->action_pending = false;
+		}
+	}
+}
+
 bool
 cursor_process_button_release(struct seat *seat, uint32_t button,
 		uint32_t time_msec)
@@ -1086,6 +1097,7 @@ cursor_process_button_release(struct seat *seat, uint32_t button,
 	seat_reset_pressed(seat);
 
 	if (server->input_mode == LAB_INPUT_STATE_MENU) {
+		reset_mousebind_pending_states(button);
 		/* TODO: take into account overflow of time_msec */
 		if (time_msec - press_msec > rc.menu_ignore_button_release_period) {
 			if (ctx.type == LAB_SSD_MENU) {
@@ -1100,7 +1112,9 @@ cursor_process_button_release(struct seat *seat, uint32_t button,
 		return false;
 	}
 
-	if (server->input_mode != LAB_INPUT_STATE_PASSTHROUGH) {
+	if (server->input_mode == LAB_INPUT_STATE_MOVE
+			|| server->input_mode == LAB_INPUT_STATE_RESIZE) {
+		reset_mousebind_pending_states(button);
 		if (pressed_surface) {
 			/* Ensure CSD clients see the release event */
 			return true;
@@ -1109,6 +1123,7 @@ cursor_process_button_release(struct seat *seat, uint32_t button,
 	}
 
 	if (pressed_surface && ctx.surface != pressed_surface) {
+		reset_mousebind_pending_states(button);
 		/*
 		 * Button released but originally pressed over a different surface.
 		 * Just send the release event to the still focused surface.
@@ -1119,6 +1134,7 @@ cursor_process_button_release(struct seat *seat, uint32_t button,
 	/* Bindings to the Frame context swallow mouse events if activated */
 	bool consumed_by_frame_context =
 		handle_release_mousebinding(server, &ctx, button);
+	reset_mousebind_pending_states(button);
 
 	if (!consumed_by_frame_context) {
 		/* Notify client with pointer focus of button release */
