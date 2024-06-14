@@ -14,6 +14,7 @@
 #include "common/spawn.h"
 #include "common/string-helpers.h"
 #include "debug.h"
+#include "input/ime.h"
 #include "labwc.h"
 #include "magnifier.h"
 #include "menu/menu.h"
@@ -115,7 +116,8 @@ enum action_type {
 	ACTION_TYPE_TOGGLE_SHADE,
 	ACTION_TYPE_TOGGLE_MAGNIFY,
 	ACTION_TYPE_ZOOM_IN,
-	ACTION_TYPE_ZOOM_OUT
+	ACTION_TYPE_ZOOM_OUT,
+	ACTION_TYPE_TOGGLE_IME,
 };
 
 const char *action_names[] = {
@@ -174,6 +176,7 @@ const char *action_names[] = {
 	"ToggleMagnify",
 	"ZoomIn",
 	"ZoomOut",
+	"ToggleIME",
 	NULL
 };
 
@@ -1115,6 +1118,9 @@ actions_run(struct view *activator, struct server *server,
 			break;
 		case ACTION_TYPE_ZOOM_OUT:
 			magnify_set_scale(server, MAGNIFY_DECREASE);
+			break;
+		case ACTION_TYPE_TOGGLE_IME:
+			input_method_toggle(server->seat.input_method_relay);
 			break;
 		case ACTION_TYPE_INVALID:
 			wlr_log(WLR_ERROR, "Not executing unknown action");

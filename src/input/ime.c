@@ -115,8 +115,8 @@ update_active_text_input(struct input_method_relay *relay)
 {
 	struct text_input *active_text_input = get_active_text_input(relay);
 
-	if (relay->input_method && relay->active_text_input
-			!= active_text_input) {
+	if (relay->input_method && relay->forced_state == IM_FORCE_NONE
+			&& relay->active_text_input != active_text_input) {
 		if (active_text_input) {
 			wlr_input_method_v2_send_activate(relay->input_method);
 		} else {
@@ -612,4 +612,36 @@ input_method_relay_set_focus(struct input_method_relay *relay,
 
 	update_text_inputs_focused_surface(relay);
 	update_active_text_input(relay);
+}
+
+void input_method_toggle(struct input_method_relay *relay)
+{
+	if (!relay->input_method) {
+		return;
+	}
+
+	bool current_active;
+	if (relay->forced_state == IM_FORCE_ENABLED) {
+		current_active = true;
+	} else if (relay->forced_state == IM_FORCE_DISABLED) {
+		current_active = false;
+	} else {
+		current_active = get_active_text_input(relay);
+	}
+	if (current_active) {
+		if (relay->forced_state == IM_FORCE_ENABLED) {
+			relay->forced_state = IM_FORCE_NONE;
+		} else {
+			relay->forced_state = IM_FORCE_DISABLED;
+		}
+		wlr_input_method_v2_send_deactivate(relay->input_method);
+	} else {
+		if (relay->forced_state == IM_FORCE_DISABLED) {
+			relay->forced_state = IM_FORCE_NONE;
+		} else {
+			relay->forced_state = IM_FORCE_ENABLED;
+		}
+		wlr_input_method_v2_send_activate(relay->input_method);
+	}
+	wlr_input_method_v2_send_done(relay->input_method);
 }

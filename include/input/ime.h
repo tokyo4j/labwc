@@ -21,6 +21,11 @@ struct input_method_relay {
 	struct wl_list text_inputs; /* struct text_input.link */
 	struct wlr_input_method_v2 *input_method;
 	struct wlr_surface *focused_surface;
+	enum {
+		IM_FORCE_NONE = 0,
+		IM_FORCE_ENABLED,
+		IM_FORCE_DISABLED,
+	} forced_state;
 	/*
 	 * Text-input which is enabled by the client and communicating with
 	 * input-method.
@@ -87,5 +92,7 @@ void input_method_relay_finish(struct input_method_relay *relay);
 /* Updates currently focused surface. Surface must belong to the same seat. */
 void input_method_relay_set_focus(struct input_method_relay *relay,
 	struct wlr_surface *surface);
+
+void input_method_toggle(struct input_method_relay *relay);
 
 #endif
