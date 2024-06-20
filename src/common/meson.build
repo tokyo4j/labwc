@@ -9,6 +9,7 @@ labwc_sources += files(
   'graphic-helpers.c',
   'match.c',
   'mem.c',
+  'msg-box.c',
   'nodename.c',
   'parse-bool.c',
   'parse-double.c',

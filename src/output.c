@@ -20,6 +20,7 @@
 #include <wlr/util/log.h>
 #include "common/macros.h"
 #include "common/mem.h"
+#include "common/msg-box.h"
 #include "common/scene-helpers.h"
 #include "labwc.h"
 #include "layers.h"
@@ -185,6 +186,7 @@ output_destroy_notify(struct wl_listener *listener, void *data)
 	if (seat->overlay.active.output == output) {
 		overlay_hide(seat);
 	}
+	msg_box_destroy(&output->msg_boxes);
 	wl_list_remove(&output->link);
 	wl_list_remove(&output->frame.link);
 	wl_list_remove(&output->destroy.link);
@@ -197,6 +199,7 @@ output_destroy_notify(struct wl_listener *listener, void *data)
 	wlr_scene_node_destroy(&output->layer_popup_tree->node);
 	wlr_scene_node_destroy(&output->osd_tree->node);
 	wlr_scene_node_destroy(&output->session_lock_tree->node);
+	wlr_scene_node_destroy(&output->msg_tree->node);
 	if (output->workspace_osd) {
 		wlr_scene_node_destroy(&output->workspace_osd->node);
 		output->workspace_osd = NULL;
@@ -416,6 +419,7 @@ new_output_notify(struct wl_listener *listener, void *data)
 	wl_signal_add(&wlr_output->events.request_state, &output->request_state);
 
 	wl_list_init(&output->regions);
+	wl_list_init(&output->msg_boxes);
 
 	/*
 	 * Create layer-trees (background, bottom, top and overlay) and
@@ -432,6 +436,9 @@ new_output_notify(struct wl_listener *listener, void *data)
 		LAB_NODE_DESC_TREE, NULL);
 	output->osd_tree = wlr_scene_tree_create(&server->scene->tree);
 	node_descriptor_create(&output->osd_tree->node,
+		LAB_NODE_DESC_TREE, NULL);
+	output->msg_tree = wlr_scene_tree_create(&server->scene->tree);
+	node_descriptor_create(&output->msg_tree->node,
 		LAB_NODE_DESC_TREE, NULL);
 	output->session_lock_tree = wlr_scene_tree_create(&server->scene->tree);
 	node_descriptor_create(&output->session_lock_tree->node,
@@ -453,6 +460,7 @@ new_output_notify(struct wl_listener *listener, void *data)
 	wlr_scene_node_raise_to_top(&output->layer_tree[2]->node);
 	wlr_scene_node_raise_to_top(&output->layer_tree[3]->node);
 	wlr_scene_node_raise_to_top(&output->layer_popup_tree->node);
+	wlr_scene_node_raise_to_top(&output->msg_tree->node);
 	wlr_scene_node_raise_to_top(&output->session_lock_tree->node);
 
 	/*

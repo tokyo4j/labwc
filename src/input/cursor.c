@@ -13,6 +13,7 @@
 #include "common/scene-helpers.h"
 #include "common/surface-helpers.h"
 #include "config/mousebind.h"
+#include "common/msg-box.h"
 #include "dnd.h"
 #include "idle.h"
 #include "input/gestures.h"
@@ -22,6 +23,7 @@
 #include "labwc.h"
 #include "layers.h"
 #include "menu/menu.h"
+#include "node.h"
 #include "regions.h"
 #include "resistance.h"
 #include "resize-outlines.h"
@@ -1051,6 +1053,8 @@ cursor_process_button_press(struct seat *seat, uint32_t button, uint32_t time_ms
 		desktop_focus_view_or_surface(seat, NULL, ctx.surface,
 			/*raise*/ false);
 #endif
+	} else if (ctx.type == LAB_SSD_MSGBOX) {
+		msg_box_remove_from_node(ctx.node);
 	}
 
 	if (ctx.type != LAB_SSD_CLIENT && ctx.type != LAB_SSD_LAYER_SUBSURFACE

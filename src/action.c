@@ -10,6 +10,7 @@
 #include "common/macros.h"
 #include "common/list.h"
 #include "common/mem.h"
+#include "common/msg-box.h"
 #include "common/parse-bool.h"
 #include "common/spawn.h"
 #include "common/string-helpers.h"
@@ -764,7 +765,11 @@ actions_run(struct view *activator, struct server *server,
 				}
 			}
 			break;
-		case ACTION_TYPE_DEBUG:
+		case ACTION_TYPE_DEBUG:;
+			static int msg_idx = 0;
+			char buf[16];
+			sprintf(buf, "msg-%d", msg_idx++);
+			msg_box_create(server, buf);
 			debug_dump_scene(server);
 			break;
 		case ACTION_TYPE_EXECUTE:

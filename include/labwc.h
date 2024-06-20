@@ -390,6 +390,9 @@ struct output {
 	struct wlr_scene_buffer *workspace_osd;
 	struct wlr_box usable_area;
 
+	struct wlr_scene_tree *msg_tree;
+	struct wl_list msg_boxes;
+
 	struct wl_list regions;  /* struct region.link */
 
 	struct lab_data_buffer *osd_buffer;
