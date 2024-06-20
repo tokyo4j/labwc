@@ -346,6 +346,10 @@ get_cursor_context(struct server *server)
 				ret.node = node;
 				ret.type = LAB_SSD_MENU;
 				return ret;
+			case LAB_NODE_DESC_MSGBOX:
+				ret.node = node;
+				ret.type = LAB_SSD_MSGBOX;
+				return ret;
 			case LAB_NODE_DESC_NODE:
 			case LAB_NODE_DESC_TREE:
 				break;

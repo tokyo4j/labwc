@@ -127,6 +127,9 @@ get_special(struct server *server, struct wlr_scene_node *node)
 					return get_layer_name(i);
 				}
 			}
+			if (node == &output->msg_tree->node) {
+				return "output->msg_tree";
+			}
 			if (node == &output->session_lock_tree->node) {
 				return "output->session_lock_tree";
 			}
