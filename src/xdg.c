@@ -560,7 +560,6 @@ xdg_toplevel_view_map(struct view *view)
 		view_set_output(view, output_nearest_to_cursor(view->server));
 	}
 	struct wlr_xdg_surface *xdg_surface = xdg_surface_from_view(view);
-	view->surface = xdg_surface->surface;
 	wlr_scene_node_set_enabled(&view->scene_tree->node, true);
 	if (!view->been_mapped) {
 		struct wlr_xdg_toplevel_requested *requested =
@@ -738,18 +737,7 @@ xdg_surface_new(struct wl_listener *listener, void *data)
 	view->type = LAB_XDG_SHELL_VIEW;
 	view->impl = &xdg_toplevel_view_impl;
 	xdg_toplevel_view->xdg_surface = xdg_surface;
-
-	/*
-	 * Pick an output for the surface as soon as its created, so that the
-	 * client can be notified about any fractional scale before it is given
-	 * the chance to configure itself (and possibly pick its dimensions).
-	 */
-	view_set_output(view, output_nearest_to_cursor(server));
-	if (view->output) {
-		wlr_fractional_scale_v1_notify_scale(xdg_surface->surface,
-			view->output->wlr_output->scale);
-	}
-
+	view->surface = xdg_surface->surface;
 	view->workspace = server->workspace_current;
 	view->scene_tree = wlr_scene_tree_create(view->workspace->tree);
 	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
@@ -794,6 +782,23 @@ xdg_surface_new(struct wl_listener *listener, void *data)
 
 	/* In support of xdg popups and IME popup */
 	xdg_surface->surface->data = tree;
+
+	if (!view->output) {
+		/*
+		* Pick an output for the surface as soon as its created, so
+		* that the client can be notified about any fractional scale
+		* before it is given the chance to configure itself (and
+		* possibly pick its dimensions).
+		*/
+		view_set_output(view, output_nearest_to_cursor(server));
+	}
+
+	view_impl_create(view);
+
+	if (view->output) {
+		wlr_fractional_scale_v1_notify_scale(xdg_surface->surface,
+			view->output->wlr_output->scale);
+	}
 
 	view_connect_map(view, xdg_surface->surface);
 	CONNECT_SIGNAL(xdg_surface, view, destroy);

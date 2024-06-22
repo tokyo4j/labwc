@@ -7,6 +7,7 @@
 
 enum window_rule_event {
 	LAB_WINDOW_RULE_EVENT_ON_FIRST_MAP = 0,
+	LAB_WINDOW_RULE_EVENT_ON_CREATE = 1,
 };
 
 enum property {

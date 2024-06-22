@@ -12,6 +12,7 @@ struct view;
 
 void view_impl_move_to_front(struct view *view);
 void view_impl_move_to_back(struct view *view);
+void view_impl_create(struct view *view);
 void view_impl_map(struct view *view);
 void view_impl_unmap(struct view *view);
 

@@ -960,6 +960,8 @@ xwayland_view_create(struct server *server,
 
 	wl_list_insert(&view->server->views, &view->link);
 
+	view_impl_create(view);
+
 	if (xsurface->surface) {
 		handle_associate(&xwayland_view->associate, NULL);
 	}

@@ -204,8 +204,9 @@ fill_window_rule(char *nodename, char *content)
 		 */
 		if (!strcasecmp(content, "onFirstMap")) {
 			current_window_rule->event = LAB_WINDOW_RULE_EVENT_ON_FIRST_MAP;
+		} else if (!strcasecmp(content, "onCreate")) {
+			current_window_rule->event = LAB_WINDOW_RULE_EVENT_ON_CREATE;
 		}
-
 	/* Properties */
 	} else if (!strcasecmp(nodename, "serverDecoration")) {
 		set_property(content, &current_window_rule->server_decoration);

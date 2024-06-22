@@ -25,6 +25,12 @@ view_impl_move_to_back(struct view *view)
 }
 
 void
+view_impl_create(struct view *view)
+{
+	window_rules_apply(view, LAB_WINDOW_RULE_EVENT_ON_CREATE);
+}
+
+void
 view_impl_map(struct view *view)
 {
 	desktop_focus_view(view, /*raise*/ true);
