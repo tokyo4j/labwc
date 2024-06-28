@@ -777,6 +777,7 @@ entry(xmlNode *node, char *nodename, char *content)
 	static enum font_place font_place = FONT_PLACE_NONE;
 
 	static uint32_t button_map_from;
+	static enum view_edge snap_range_edge = VIEW_EDGE_INVALID;
 
 	if (!nodename) {
 		return;
@@ -950,8 +951,14 @@ entry(xmlNode *node, char *nodename, char *content)
 		rc.screen_edge_strength = atoi(content);
 	} else if (!strcasecmp(nodename, "windowEdgeStrength.resistance")) {
 		rc.window_edge_strength = atoi(content);
+	} else if (!strcasecmp(nodename, "edge.range.snapping")) {
+		snap_range_edge =
+			!strcasecmp(content, "top") ? VIEW_EDGE_UP :
+			!strcasecmp(content, "bottom") ? VIEW_EDGE_DOWN :
+			!strcasecmp(content, "left") ? VIEW_EDGE_LEFT :
+			!strcasecmp(content, "right") ? VIEW_EDGE_RIGHT : VIEW_EDGE_INVALID;
 	} else if (!strcasecmp(nodename, "range.snapping")) {
-		rc.snap_edge_range = atoi(content);
+		rc.snap_edge_range[snap_range_edge] = atoi(content);
 	} else if (!strcasecmp(nodename, "enabled.overlay.snapping")) {
 		set_bool(content, &rc.snap_overlay_enabled);
 	} else if (!strcasecmp(nodename, "inner.delay.overlay.snapping")) {
@@ -1258,7 +1265,11 @@ rcxml_init(void)
 	rc.screen_edge_strength = 20;
 	rc.window_edge_strength = 20;
 
-	rc.snap_edge_range = 1;
+	rc.snap_edge_range[VIEW_EDGE_INVALID] = 1;
+	rc.snap_edge_range[VIEW_EDGE_LEFT] = -1;
+	rc.snap_edge_range[VIEW_EDGE_RIGHT] = -1;
+	rc.snap_edge_range[VIEW_EDGE_UP] = -1;
+	rc.snap_edge_range[VIEW_EDGE_DOWN] = -1;
 	rc.snap_overlay_enabled = true;
 	rc.snap_overlay_delay_inner = 500;
 	rc.snap_overlay_delay_outer = 500;
@@ -1514,6 +1525,13 @@ post_processing(void)
 
 	if (rc.mag_scale <= 0.0) {
 		rc.mag_scale = 1.0;
+	}
+
+	for (enum view_edge edge = VIEW_EDGE_LEFT; edge <= VIEW_EDGE_DOWN; edge++) {
+		if (rc.snap_edge_range[edge] == -1) {
+			rc.snap_edge_range[edge] =
+				rc.snap_edge_range[VIEW_EDGE_INVALID];
+		}
 	}
 }
 

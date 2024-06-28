@@ -110,7 +110,9 @@ struct rcxml {
 	int window_edge_strength;
 
 	/* window snapping */
-	int snap_edge_range;
+
+	/* enum view_edge is used as index. */
+	int snap_edge_range[5];
 	bool snap_overlay_enabled;
 	int snap_overlay_delay_inner;
 	int snap_overlay_delay_outer;

@@ -134,12 +134,6 @@ interactive_begin(struct view *view, enum input_mode mode, uint32_t edges)
 struct edge_snap_info
 get_edge_snap_info(struct seat *seat)
 {
-	int snap_range = rc.snap_edge_range;
-	if (!snap_range) {
-		/* Snapping is disabled */
-		return (struct edge_snap_info){};
-	}
-
 	struct output *output = output_nearest_to_cursor(seat->server);
 	if (!output_is_usable(output)) {
 		wlr_log(WLR_ERROR, "output at cursor is unusable");
@@ -155,10 +149,28 @@ get_edge_snap_info(struct seat *seat)
 	struct wlr_box *area = &output->usable_area;
 	int corner_range_x = area->width * 0.1;
 	int corner_range_y = area->height * 0.1;
-	bool is_left      = cursor_x <= area->x + snap_range;
-	bool is_right     = cursor_x >= area->x + area->width - snap_range;
-	bool is_up        = cursor_y <= area->y + snap_range;
-	bool is_down      = cursor_y >= area->y + area->height - snap_range;
+
+	bool is_left = false;
+	bool is_right = false;
+	bool is_up = false;
+	bool is_down = false;
+	if (rc.snap_edge_range[VIEW_EDGE_LEFT]) {
+		is_left = cursor_x <= area->x
+				+ rc.snap_edge_range[VIEW_EDGE_LEFT];
+	}
+	if (rc.snap_edge_range[VIEW_EDGE_RIGHT]) {
+		is_right = cursor_x >= area->x + area->width
+				- rc.snap_edge_range[VIEW_EDGE_RIGHT];
+	}
+	if (rc.snap_edge_range[VIEW_EDGE_UP]) {
+		is_up = cursor_y <= area->y
+				+ rc.snap_edge_range[VIEW_EDGE_UP];
+	}
+	if (rc.snap_edge_range[VIEW_EDGE_DOWN]) {
+		is_down = cursor_y >= area->y + area->height
+				- rc.snap_edge_range[VIEW_EDGE_DOWN];
+	}
+
 	bool is_far_left  = cursor_x <= area->x + corner_range_x;
 	bool is_far_right = cursor_x >= area->x + area->width - corner_range_x;
 	bool is_far_up    = cursor_y <= area->y + corner_range_y;
