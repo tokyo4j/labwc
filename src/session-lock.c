@@ -270,21 +270,21 @@ handle_lock_unlock(struct wl_listener *listener, void *data)
 	cursor_update_focus(manager->server);
 }
 
+/* Called when session-lock is destroyed without unlock */
 static void
 handle_lock_destroy(struct wl_listener *listener, void *data)
 {
 	struct session_lock_manager *manager =
 		wl_container_of(listener, manager, lock_destroy);
 
-	float *black = (float[4]) { 0.f, 0.f, 0.f, 1.f };
-	struct session_lock_output *lock_output;
-	wl_list_for_each(lock_output, &manager->session_lock_outputs, link) {
-		wlr_scene_rect_set_color(lock_output->background, black);
-	}
-
+	/*
+	 * Destroy session-lock, but manager->locked remains true and
+	 * lock_outputs still hides the screens.
+	 */
 	wl_list_remove(&manager->lock_destroy.link);
 	wl_list_remove(&manager->lock_unlock.link);
 	wl_list_remove(&manager->lock_new_surface.link);
+	manager->lock = NULL;
 }
 
 static void
@@ -301,6 +301,7 @@ handle_new_session_lock(struct wl_listener *listener, void *data)
 	}
 	if (manager->locked) {
 		wlr_log(WLR_INFO, "replacing abandoned lock");
+		/* clear lock_output's */
 		session_lock_destroy(manager);
 	}
 	assert(wl_list_empty(&manager->session_lock_outputs));
@@ -320,6 +321,7 @@ handle_new_session_lock(struct wl_listener *listener, void *data)
 	wl_signal_add(&lock->events.destroy, &manager->lock_destroy);
 
 	manager->locked = true;
+	manager->lock = lock;
 	wlr_session_lock_v1_send_locked(lock);
 }
 
