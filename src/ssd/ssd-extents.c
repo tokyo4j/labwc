@@ -111,6 +111,7 @@ ssd_extents_update(struct ssd *ssd)
 	int extended_area = SSD_EXTENDED_AREA;
 	int corner_size = extended_area + theme->border_width + SSD_BUTTON_WIDTH / 2;
 	int side_width = full_width + extended_area * 2 - corner_size * 2;
+	side_width = MAX(0, side_width);
 	int side_height = full_height + extended_area * 2 - corner_size * 2;
 
 	struct wlr_box part_box;
