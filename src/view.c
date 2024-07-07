@@ -2404,6 +2404,10 @@ view_destroy(struct view *view)
 		seat_reset_pressed(&server->seat);
 	}
 
+	if (view->resize_preview.timer) {
+		wl_event_source_remove(view->resize_preview.timer);
+	}
+
 	if (view->tiled_region_evacuate) {
 		zfree(view->tiled_region_evacuate);
 	}

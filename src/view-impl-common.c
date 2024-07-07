@@ -4,6 +4,7 @@
 #include <strings.h>
 #include "common/list.h"
 #include "labwc.h"
+#include "resize-preview.h"
 #include "view.h"
 #include "view-impl-common.h"
 #include "window-rules.h"
@@ -84,6 +85,8 @@ view_impl_apply_geometry(struct view *view, int w, int h)
 	struct wlr_box *current = &view->current;
 	struct wlr_box *pending = &view->pending;
 	struct wlr_box old = *current;
+
+	resize_preview_cancel_timer(view);
 
 	/*
 	 * Anchor right edge if resizing via left edge.

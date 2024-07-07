@@ -238,9 +238,12 @@ struct view {
 		struct wlr_scene_rect *background;
 		struct scaled_font_buffer *text;
 	} resize_indicator;
+
 	struct resize_preview {
 		struct wlr_box view_geo;
-		struct multi_rect *rect;
+		struct wlr_scene_tree *tree;
+		struct wlr_scene_rect *filler_right, *filler_bottom;
+		struct wl_event_source *timer;
 	} resize_preview;
 
 	struct foreign_toplevel {

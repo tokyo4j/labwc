@@ -9,5 +9,6 @@ struct view;
 void resize_preview_update(struct view *view, struct wlr_box new_geo);
 void resize_preview_finish(struct view *view);
 bool resize_preview_enabled(struct view *view);
+void resize_preview_cancel_timer(struct view *view);
 
 #endif /* LABWC_RESIZE_OUTLINES_H */
