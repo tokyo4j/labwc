@@ -7,7 +7,7 @@
 #include "common/scaled-font-buffer.h"
 #include "labwc.h"
 #include "resize-indicator.h"
-#include "resize-outlines.h"
+#include "resize-preview.h"
 #include "view.h"
 
 static void
@@ -161,8 +161,8 @@ resize_indicator_update(struct view *view)
 	char text[32]; /* 12345 x 12345 would be 13 chars + 1 null byte */
 
 	struct wlr_box view_box;
-	if (resize_outlines_enabled(view)) {
-		view_box = view->resize_outlines.view_geo;
+	if (resize_preview_enabled(view)) {
+		view_box = view->resize_preview.view_geo;
 	} else {
 		view_box = view->current;
 		view_box.height = view_effective_height(view, /* use_pending */ false);
