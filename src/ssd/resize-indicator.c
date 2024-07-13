@@ -161,8 +161,8 @@ resize_indicator_update(struct view *view)
 	char text[32]; /* 12345 x 12345 would be 13 chars + 1 null byte */
 
 	struct wlr_box view_box;
-	if (resize_outlines_enabled(view)) {
-		view_box = view->resize_outlines.view_geo;
+	if (resize_overlay_enabled(view)) {
+		view_box = view->resize_overlay.view_geo;
 	} else {
 		view_box = view->current;
 		view_box.height = view_effective_height(view, /* use_pending */ false);

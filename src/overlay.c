@@ -5,70 +5,37 @@
 #include "view.h"
 #include "theme.h"
 
-static void
-create_overlay_rect(struct seat *seat, struct overlay_rect *rect,
-		struct theme_snapping_overlay *theme)
-{
-	struct server *server = seat->server;
-
-	rect->bg_enabled = theme->bg_enabled;
-	rect->border_enabled = theme->border_enabled;
-	rect->tree = wlr_scene_tree_create(&server->scene->tree);
-
-	if (rect->bg_enabled) {
-		/* Create a filled rectangle */
-		rect->bg_rect = wlr_scene_rect_create(
-			rect->tree, 0, 0, theme->bg_color);
-	}
-
-	if (rect->border_enabled) {
-		/* Create outlines */
-		float *colors[3] = {
-			theme->border_color[0],
-			theme->border_color[1],
-			theme->border_color[2],
-		};
-		rect->border_rect = multi_rect_create(
-			rect->tree, colors, theme->border_width);
-	}
-
-	wlr_scene_node_set_enabled(&rect->tree->node, false);
-}
-
 void overlay_reconfigure(struct seat *seat)
 {
-	if (seat->overlay.region_rect.tree) {
-		wlr_scene_node_destroy(&seat->overlay.region_rect.tree->node);
+	if (seat->overlay.region_rect) {
+		wlr_scene_node_destroy(&seat->overlay.region_rect->tree->node);
 	}
-	if (seat->overlay.edge_rect.tree) {
-		wlr_scene_node_destroy(&seat->overlay.edge_rect.tree->node);
+	if (seat->overlay.edge_rect) {
+		wlr_scene_node_destroy(&seat->overlay.edge_rect->tree->node);
 	}
 
 	struct theme *theme = seat->server->theme;
-	create_overlay_rect(seat, &seat->overlay.region_rect,
-		&theme->snapping_overlay_region);
-	create_overlay_rect(seat, &seat->overlay.edge_rect,
-		&theme->snapping_overlay_edge);
+	seat->overlay.region_rect = overlay_rect_create(
+		&seat->server->scene->tree, &theme->snapping_overlay_region);
+	seat->overlay.edge_rect = overlay_rect_create(
+		&seat->server->scene->tree, &theme->snapping_overlay_edge);
 }
 
 static void
-show_overlay(struct seat *seat, struct overlay_rect *rect, struct wlr_box *box)
+show_overlay(struct seat *seat, struct overlay_rect **overlay_rect, struct wlr_box *box)
 {
 	struct server *server = seat->server;
 	struct view *view = server->grabbed_view;
 	assert(view);
 
-	if (!rect->tree) {
+	struct overlay_rect *rect = *overlay_rect;
+	if (!rect) {
 		overlay_reconfigure(seat);
-		assert(rect->tree);
+		rect = *overlay_rect;
+		assert(rect);
 	}
 
-	if (rect->bg_enabled) {
-		wlr_scene_rect_set_size(rect->bg_rect, box->width, box->height);
-	}
-	if (rect->border_enabled) {
-		multi_rect_set_size(rect->border_rect, box->width, box->height);
-	}
+	overlay_rect_set_size(rect, box->width, box->height);
 
 	struct wlr_scene_node *node = &rect->tree->node;
 	wlr_scene_node_reparent(node, view->scene_tree->node.parent);
@@ -80,13 +47,13 @@ show_overlay(struct seat *seat, struct overlay_rect *rect, struct wlr_box *box)
 static void
 inactivate_overlay(struct overlay *overlay)
 {
-	if (overlay->region_rect.tree) {
+	if (overlay->region_rect) {
 		wlr_scene_node_set_enabled(
-			&overlay->region_rect.tree->node, false);
+			&overlay->region_rect->tree->node, false);
 	}
-	if (overlay->edge_rect.tree) {
+	if (overlay->edge_rect) {
 		wlr_scene_node_set_enabled(
-			&overlay->edge_rect.tree->node, false);
+			&overlay->edge_rect->tree->node, false);
 	}
 	overlay->active.region = NULL;
 	overlay->active.edge = VIEW_EDGE_INVALID;
@@ -251,12 +218,12 @@ overlay_hide(struct seat *seat)
 	 * Reparent the rectangle nodes to server's scene-tree so they don't
 	 * get destroyed on view destruction
 	 */
-	if (overlay->region_rect.tree) {
-		wlr_scene_node_reparent(&overlay->region_rect.tree->node,
+	if (overlay->region_rect) {
+		wlr_scene_node_reparent(&overlay->region_rect->tree->node,
 			&server->scene->tree);
 	}
-	if (overlay->edge_rect.tree) {
-		wlr_scene_node_reparent(&overlay->edge_rect.tree->node,
+	if (overlay->edge_rect) {
+		wlr_scene_node_reparent(&overlay->edge_rect->tree->node,
 			&server->scene->tree);
 	}
 }

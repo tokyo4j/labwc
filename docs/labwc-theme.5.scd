@@ -272,6 +272,13 @@ elements are not listed here, but are supported.
 	snapped to an edge. Possible values and the default value are the same
 	as those of *osd.window-switcher.preview.border.color*.
 
+*resize.overlay.bg.enabled*++
+*resize.overlay.border.enabled*++
+*resize.overlay.bg.color*++
+*resize.overlay.border.width*++
+*resize.overlay.border.color*
+	TODO
+
 *border.color*
 	Set both *window.active.border.color* and
 	*window.inactive.border.color*. This is obsolete, but supported for

@@ -8,6 +8,7 @@
 struct wlr_scene_tree;
 struct wlr_scene_rect;
 struct wlr_fbox;
+struct overlay_theme;
 
 struct multi_rect {
 	struct wlr_scene_tree *tree;
@@ -37,6 +38,17 @@ struct multi_rect *multi_rect_create(struct wlr_scene_tree *parent,
 		float *colors[3], int line_width);
 
 void multi_rect_set_size(struct multi_rect *rect, int width, int height);
+
+/* overlay_rect is combination of multi_rect and wlr_scene_rect */
+struct overlay_rect {
+	struct wlr_scene_tree *tree;
+	struct wlr_scene_rect *bg_rect;
+	struct multi_rect *border_rect;
+};
+
+struct overlay_rect *overlay_rect_create(struct wlr_scene_tree *parent,
+		struct overlay_theme *theme);
+void overlay_rect_set_size(struct overlay_rect *rect, int width, int height);
 
 /**
  * Sets the cairo color.

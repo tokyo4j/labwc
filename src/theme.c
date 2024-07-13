@@ -551,25 +551,33 @@ theme_builtin(struct theme *theme, struct server *server)
 		/* Draw only outlined overlay by default to save CPU resource */
 		theme->snapping_overlay_region.bg_enabled = false;
 		theme->snapping_overlay_edge.bg_enabled = false;
+		theme->resize_overlay.bg_enabled = false;
 		theme->snapping_overlay_region.border_enabled = true;
 		theme->snapping_overlay_edge.border_enabled = true;
+		theme->resize_overlay.border_enabled = true;
 	} else {
 		theme->snapping_overlay_region.bg_enabled = true;
 		theme->snapping_overlay_edge.bg_enabled = true;
+		theme->resize_overlay.bg_enabled = true;
 		theme->snapping_overlay_region.border_enabled = false;
 		theme->snapping_overlay_edge.border_enabled = false;
+		theme->resize_overlay.border_enabled = false;
 	}
 
 	parse_hexstr("#8080b380", theme->snapping_overlay_region.bg_color);
 	parse_hexstr("#8080b380", theme->snapping_overlay_edge.bg_color);
+	parse_hexstr("#8080b380", theme->resize_overlay.bg_color);
 
 	/* inherit settings in post_processing() if not set elsewhere */
 	theme->snapping_overlay_region.border_width = INT_MIN;
 	theme->snapping_overlay_edge.border_width = INT_MIN;
+	theme->resize_overlay.border_width = INT_MIN;
 	zero_array(theme->snapping_overlay_region.border_color);
 	theme->snapping_overlay_region.border_color[0][0] = FLT_MIN;
 	zero_array(theme->snapping_overlay_edge.border_color);
 	theme->snapping_overlay_edge.border_color[0][0] = FLT_MIN;
+	zero_array(theme->resize_overlay.border_color);
+	theme->resize_overlay.border_color[0][0] = FLT_MIN;
 
 	/* magnifier */
 	parse_hexstr("#ff0000", theme->mag_border_color);
@@ -805,11 +813,17 @@ entry(struct theme *theme, const char *key, const char *value)
 	if (match_glob(key, "snapping.overlay.edge.bg.enabled")) {
 		set_bool(value, &theme->snapping_overlay_edge.bg_enabled);
 	}
+	if (match_glob(key, "resize.overlay.bg.enabled")) {
+		set_bool(value, &theme->resize_overlay.bg_enabled);
+	}
 	if (match_glob(key, "snapping.overlay.region.border.enabled")) {
 		set_bool(value, &theme->snapping_overlay_region.border_enabled);
 	}
 	if (match_glob(key, "snapping.overlay.edge.border.enabled")) {
 		set_bool(value, &theme->snapping_overlay_edge.border_enabled);
+	}
+	if (match_glob(key, "resize.overlay.border.enabled")) {
+		set_bool(value, &theme->resize_overlay.border_enabled);
 	}
 	if (match_glob(key, "snapping.overlay.region.bg.color")) {
 		parse_hexstr(value, theme->snapping_overlay_region.bg_color);
@@ -817,17 +831,26 @@ entry(struct theme *theme, const char *key, const char *value)
 	if (match_glob(key, "snapping.overlay.edge.bg.color")) {
 		parse_hexstr(value, theme->snapping_overlay_edge.bg_color);
 	}
+	if (match_glob(key, "resize.overlay.bg.color")) {
+		parse_hexstr(value, theme->resize_overlay.bg_color);
+	}
 	if (match_glob(key, "snapping.overlay.region.border.width")) {
 		theme->snapping_overlay_region.border_width = atoi(value);
 	}
 	if (match_glob(key, "snapping.overlay.edge.border.width")) {
 		theme->snapping_overlay_edge.border_width = atoi(value);
 	}
+	if (match_glob(key, "resize.overlay.border.width")) {
+		theme->resize_overlay.border_width = atoi(value);
+	}
 	if (match_glob(key, "snapping.overlay.region.border.color")) {
 		parse_hexstrs(value, theme->snapping_overlay_region.border_color);
 	}
 	if (match_glob(key, "snapping.overlay.edge.border.color")) {
 		parse_hexstrs(value, theme->snapping_overlay_edge.border_color);
+	}
+	if (match_glob(key, "resize.overlay.border.color")) {
+		parse_hexstrs(value, theme->resize_overlay.border_color);
 	}
 
 	if (match_glob(key, "magnifier.border.width")) {
@@ -1358,6 +1381,10 @@ post_processing(struct theme *theme)
 		theme->snapping_overlay_edge.border_width =
 			theme->osd_border_width;
 	}
+	if (theme->resize_overlay.border_width == INT_MIN) {
+		theme->resize_overlay.border_width =
+			theme->osd_border_width;
+	}
 	if (theme->snapping_overlay_region.border_color[0][0] == FLT_MIN) {
 		fill_colors_with_osd_theme(theme,
 			theme->snapping_overlay_region.border_color);
@@ -1365,6 +1392,10 @@ post_processing(struct theme *theme)
 	if (theme->snapping_overlay_edge.border_color[0][0] == FLT_MIN) {
 		fill_colors_with_osd_theme(theme,
 			theme->snapping_overlay_edge.border_color);
+	}
+	if (theme->resize_overlay.border_color[0][0] == FLT_MIN) {
+		fill_colors_with_osd_theme(theme,
+			theme->resize_overlay.border_color);
 	}
 }
 

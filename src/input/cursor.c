@@ -310,7 +310,7 @@ process_cursor_resize(struct server *server, uint32_t time)
 	if (rc.resize_draw_contents) {
 		view_move_resize(view, new_view_geo);
 	} else {
-		resize_outlines_update(view, new_view_geo);
+		resize_overlay_update(view, new_view_geo);
 	}
 }
 
@@ -1139,8 +1139,8 @@ cursor_finish_button_release(struct seat *seat)
 
 	if (server->input_mode == LAB_INPUT_STATE_MOVE
 			|| server->input_mode == LAB_INPUT_STATE_RESIZE) {
-		if (resize_outlines_enabled(server->grabbed_view)) {
-			resize_outlines_finish(server->grabbed_view);
+		if (resize_overlay_enabled(server->grabbed_view)) {
+			resize_overlay_finish(server->grabbed_view);
 		}
 		/* Exit interactive move/resize mode */
 		interactive_finish(server->grabbed_view);

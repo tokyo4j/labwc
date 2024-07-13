@@ -9,6 +9,7 @@
 #include "buffer.h"
 #include "common/graphic-helpers.h"
 #include "common/mem.h"
+#include "theme.h"
 
 static void
 multi_rect_destroy_notify(struct wl_listener *listener, void *data)
@@ -72,6 +73,43 @@ multi_rect_set_size(struct multi_rect *rect, int width, int height)
 			line_width, height - (i + 1) * line_width * 2);
 		wlr_scene_rect_set_size(rect->right[i],
 			line_width, height - (i + 1) * line_width * 2);
+	}
+}
+
+struct overlay_rect *
+overlay_rect_create(struct wlr_scene_tree *parent, struct overlay_theme *theme)
+{
+	struct overlay_rect *rect = znew(*rect);
+	rect->tree = wlr_scene_tree_create(parent);
+
+	if (theme->bg_enabled) {
+		/* Create a filled rectangle */
+		rect->bg_rect = wlr_scene_rect_create(
+			rect->tree, 0, 0, theme->bg_color);
+	}
+
+	if (theme->border_enabled) {
+		/* Create outlines */
+		float *colors[3] = {
+			theme->border_color[0],
+			theme->border_color[1],
+			theme->border_color[2],
+		};
+		rect->border_rect = multi_rect_create(
+			rect->tree, colors, theme->border_width);
+	}
+
+	return rect;
+}
+
+void
+overlay_rect_set_size(struct overlay_rect *rect, int width, int height)
+{
+	if (rect->bg_rect) {
+		wlr_scene_rect_set_size(rect->bg_rect, width, height);
+	}
+	if (rect->border_rect) {
+		multi_rect_set_size(rect->border_rect, width, height);
 	}
 }
 
