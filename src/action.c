@@ -494,7 +494,7 @@ action_create(const char *action_name)
 	return action;
 }
 
-bool
+static bool
 actions_contain_toggle_keybinds(struct wl_list *action_list)
 {
 	struct action *action;
@@ -504,6 +504,13 @@ actions_contain_toggle_keybinds(struct wl_list *action_list)
 		}
 	}
 	return false;
+}
+
+bool actions_ignored(struct server *server, struct wl_list *actions)
+{
+	return server->active_view
+		&& server->active_view->inhibits_keybinds
+		&& !actions_contain_toggle_keybinds(actions);
 }
 
 static bool

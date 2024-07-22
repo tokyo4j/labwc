@@ -568,6 +568,10 @@ cursor_process_motion(struct server *server, uint32_t time, double *sx, double *
 	wl_list_for_each(mousebind, &rc.mousebinds, link) {
 		if (mousebind->mouse_event == MOUSE_ACTION_DRAG
 				&& mousebind->pressed_in_context) {
+			if (ctx.type == LAB_SSD_CLIENT
+					&& actions_ignored(server, &mousebind->actions)) {
+				continue;
+			}
 			/*
 			 * Use view and resize edges from the press
 			 * event (not the motion event) to prevent
@@ -856,6 +860,10 @@ handle_release_mousebinding(struct server *server,
 		if (ssd_part_contains(mousebind->context, ctx->type)
 				&& mousebind->button == button
 				&& modifiers == mousebind->modifiers) {
+			if (ctx->type == LAB_SSD_CLIENT
+					&& actions_ignored(server, &mousebind->actions)) {
+				continue;
+			}
 			switch (mousebind->mouse_event) {
 			case MOUSE_ACTION_RELEASE:
 				break;
@@ -950,6 +958,10 @@ handle_press_mousebinding(struct server *server, struct cursor_context *ctx,
 		if (ssd_part_contains(mousebind->context, ctx->type)
 				&& mousebind->button == button
 				&& modifiers == mousebind->modifiers) {
+			if (ctx->type == LAB_SSD_CLIENT
+					&& actions_ignored(server, &mousebind->actions)) {
+				continue;
+			}
 			switch (mousebind->mouse_event) {
 			case MOUSE_ACTION_DRAG: /* fallthrough */
 			case MOUSE_ACTION_CLICK:

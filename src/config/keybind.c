@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wlr/util/log.h>
+#include "action.h"
 #include "common/list.h"
 #include "common/mem.h"
 #include "config/keybind.h"

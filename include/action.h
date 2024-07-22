@@ -32,7 +32,8 @@ struct wl_list *action_get_querylist(struct action *action, const char *key);
 
 void action_arg_from_xml_node(struct action *action, const char *nodename, const char *content);
 
-bool actions_contain_toggle_keybinds(struct wl_list *action_list);
+/* True if the active view inhibits keybinds and the actions doesn't contain ToggleKeybind */
+bool actions_ignored(struct server *server, struct wl_list *actions);
 
 void actions_run(struct view *activator, struct server *server,
 	struct wl_list *actions, uint32_t resize_edges);
