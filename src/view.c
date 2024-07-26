@@ -390,6 +390,8 @@ view_set_activated(struct view *view, bool activated)
 	if (view->toplevel.handle) {
 		wlr_foreign_toplevel_handle_v1_set_activated(
 			view->toplevel.handle, activated);
+		wlr_foreign_toplevel_handle_v1_set_demands_attention(
+			view->toplevel.handle, false);
 	}
 
 	if (rc.kb_layout_per_window) {
