@@ -759,6 +759,32 @@ xdg_activation_handle_new_token(struct wl_listener *listener, void *data)
 	wl_signal_add(&token->events.destroy, &token_data->destroy);
 }
 
+static bool
+allows_activation(struct view *view, struct token_data *token_data)
+{
+	if (!token_data->had_valid_seat) {
+		wlr_log(WLR_INFO, "Denying focus request, seat wasn't supplied");
+		return false;
+	}
+
+	if (!token_data->had_valid_surface) {
+		wlr_log(WLR_INFO, "Denying focus request, source surface not set");
+		return false;
+	}
+
+	if (window_rules_get_property(view, "ignoreFocusRequest") == LAB_PROP_TRUE) {
+		wlr_log(WLR_INFO, "Ignoring focus request due to window rule configuration");
+		return false;
+	}
+
+	if (view->server->osd_state.cycle_view) {
+		wlr_log(WLR_INFO, "Preventing focus request while in window switcher");
+		return false;
+	}
+
+	return true;
+}
+
 static void
 xdg_activation_handle_request(struct wl_listener *listener, void *data)
 {
@@ -778,28 +804,12 @@ xdg_activation_handle_request(struct wl_listener *listener, void *data)
 		return;
 	}
 
-	if (!token_data->had_valid_seat) {
-		wlr_log(WLR_INFO, "Denying focus request, seat wasn't supplied");
-		return;
+	if (allows_activation(view, token_data)) {
+		wlr_log(WLR_DEBUG, "Activating surface");
+		desktop_focus_view(view, /*raise*/ true);
+	} else if (view->toplevel.handle) {
+		wlr_foreign_toplevel_handle_v1_send_needs_attention(view->toplevel.handle);
 	}
-
-	if (!token_data->had_valid_surface) {
-		wlr_log(WLR_INFO, "Denying focus request, source surface not set");
-		return;
-	}
-
-	if (window_rules_get_property(view, "ignoreFocusRequest") == LAB_PROP_TRUE) {
-		wlr_log(WLR_INFO, "Ignoring focus request due to window rule configuration");
-		return;
-	}
-
-	if (view->server->osd_state.cycle_view) {
-		wlr_log(WLR_INFO, "Preventing focus request while in window switcher");
-		return;
-	}
-
-	wlr_log(WLR_DEBUG, "Activating surface");
-	desktop_focus_view(view, /*raise*/ true);
 }
 
 /*
