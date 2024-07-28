@@ -20,4 +20,9 @@ wl_list_append(struct wl_list *list, struct wl_list *elm)
 	wl_list_insert(list->prev, elm);
 }
 
+typedef int (*wl_list_sort_compare)(struct wl_list *link_a,
+	struct wl_list *link_b);
+
+void wl_list_sort(struct wl_list *list, wl_list_sort_compare compare);
+
 #endif /* LABWC_LIST_H */

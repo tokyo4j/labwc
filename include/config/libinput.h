@@ -30,8 +30,8 @@ struct libinput_category {
 	float pointer_speed;
 	int natural_scroll;
 	int left_handed;
-	enum libinput_config_tap_state tap;
-	enum libinput_config_tap_button_map tap_button_map;
+	uint32_t tap;                /* enum libinput_config_tap_state tap */
+	uint32_t tap_button_map;     /* enum libinput_config_tap_button_map */
 	uint32_t tap_and_drag;       /* enum libinput_config_drag_state */
 	uint32_t drag_lock;          /* enum libinput_config_drag_lock_state */
 	uint32_t accel_profile;      /* enum libinput_config_accel_profile */
@@ -44,7 +44,7 @@ struct libinput_category {
 
 enum lab_libinput_device_type get_device_type(const char *s);
 struct libinput_category *libinput_category_create(void);
-struct libinput_category *libinput_category_get_default(void);
-void libinput_configure_device(struct wlr_input_device *wlr_input_device);
+void libinput_post_processing(void);
+void libinput_configure_device(struct wlr_input_device *device);
 
 #endif /* LABWC_LIBINPUT_H */

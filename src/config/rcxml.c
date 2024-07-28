@@ -1499,13 +1499,8 @@ post_processing(void)
 	if (!rc.font_osd.name) {
 		rc.font_osd.name = xstrdup("sans");
 	}
-	if (!libinput_category_get_default()) {
-		/* So we still allow tap to click by default */
-		struct libinput_category *l = libinput_category_create();
-		/* Prevents unused variable warning when compiled without asserts */
-		(void)l;
-		assert(l && libinput_category_get_default() == l);
-	}
+
+	libinput_post_processing();
 
 	int nr_workspaces = wl_list_length(&rc.workspace_config.workspaces);
 	if (nr_workspaces < rc.workspace_config.min_nr_workspaces) {
