@@ -19,19 +19,20 @@ libinput_category_init(struct libinput_category *l)
 {
 	l->type = LAB_LIBINPUT_DEVICE_DEFAULT;
 	l->name = NULL;
-	l->pointer_speed = -2;
-	l->natural_scroll = -1;
-	l->left_handed = -1;
-	l->tap = LIBINPUT_CONFIG_TAP_ENABLED;
-	l->tap_button_map = LIBINPUT_CONFIG_TAP_MAP_LRM;
-	l->tap_and_drag = -1;
-	l->drag_lock = -1;
-	l->accel_profile = -1;
-	l->middle_emu = -1;
-	l->dwt = -1;
-	l->click_method = -1;
-	l->send_events_mode = -1;
-	l->have_calibration_matrix = false;
+
+	l->pointer_speed         = LAB_LIBINPUT_INVALID_FLOAT;
+	l->natural_scroll        = LAB_LIBINPUT_INVALID_INT;
+	l->left_handed           = LAB_LIBINPUT_INVALID_INT;
+	l->tap                   = LAB_LIBINPUT_INVALID_ENUM;
+	l->tap_button_map        = LAB_LIBINPUT_INVALID_ENUM;
+	l->tap_and_drag          = LAB_LIBINPUT_INVALID_ENUM;
+	l->drag_lock             = LAB_LIBINPUT_INVALID_ENUM;
+	l->accel_profile         = LAB_LIBINPUT_INVALID_ENUM;
+	l->middle_emu            = LAB_LIBINPUT_INVALID_ENUM;
+	l->dwt                   = LAB_LIBINPUT_INVALID_ENUM;
+	l->click_method          = LAB_LIBINPUT_INVALID_ENUM;
+	l->send_events_mode      = LAB_LIBINPUT_INVALID_ENUM;
+	l->calibration_matrix[0] = LAB_LIBINPUT_INVALID_FLOAT;
 }
 
 enum lab_libinput_device_type
@@ -143,17 +144,6 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 	 *       libinput_device_config_*_set_*() calls. It would
 	 *       be nice if we could inform the users via log file
 	 *       that some libinput setting could not be applied.
-	 *
-	 * TODO: We are currently using int32_t with -1 as default
-	 *       to describe the not-configured state. This is not
-	 *       really optimal as we can't properly deal with
-	 *       enum values that are 0. After some discussion via
-	 *       IRC the best way forward seem to be to use a
-	 *       uint32_t instead and UINT32_MAX as indicator for
-	 *       a not-configured state. This allows to properly
-	 *       test the enum being a member of a bitset via
-	 *       mask & value == value. All libinput enums are
-	 *       way below UINT32_MAX.
 	 */
 
 	if (!wlr_input_device) {
@@ -189,7 +179,7 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 	}
 
 	if (libinput_device_config_tap_get_finger_count(libinput_dev) <= 0
-			|| dc->tap_and_drag < 0) {
+			|| dc->tap_and_drag == LAB_LIBINPUT_INVALID_ENUM) {
 		wlr_log(WLR_INFO, "tap-and-drag not configured");
 	} else {
 		wlr_log(WLR_INFO, "tap-and-drag configured");
@@ -198,7 +188,7 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 	}
 
 	if (libinput_device_config_tap_get_finger_count(libinput_dev) <= 0
-			|| dc->drag_lock < 0) {
+			|| dc->drag_lock == LAB_LIBINPUT_INVALID_ENUM) {
 		wlr_log(WLR_INFO, "drag lock not configured");
 	} else {
 		wlr_log(WLR_INFO, "drag lock configured");
@@ -207,7 +197,7 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 	}
 
 	if (libinput_device_config_scroll_has_natural_scroll(libinput_dev) <= 0
-			|| dc->natural_scroll < 0) {
+			|| dc->natural_scroll == LAB_LIBINPUT_INVALID_INT) {
 		wlr_log(WLR_INFO, "natural scroll not configured");
 	} else {
 		wlr_log(WLR_INFO, "natural scroll configured");
@@ -216,7 +206,7 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 	}
 
 	if (libinput_device_config_left_handed_is_available(libinput_dev) <= 0
-			|| dc->left_handed < 0) {
+			|| dc->left_handed == LAB_LIBINPUT_INVALID_INT) {
 		wlr_log(WLR_INFO, "left-handed mode not configured");
 	} else {
 		wlr_log(WLR_INFO, "left-handed mode configured");
@@ -228,18 +218,18 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 		wlr_log(WLR_INFO, "pointer acceleration unavailable");
 	} else {
 		wlr_log(WLR_INFO, "pointer acceleration configured");
-		if (dc->pointer_speed > -1) {
+		if (dc->pointer_speed != LAB_LIBINPUT_INVALID_FLOAT) {
 			libinput_device_config_accel_set_speed(libinput_dev,
 				dc->pointer_speed);
 		}
-		if (dc->accel_profile > 0) {
+		if (dc->accel_profile != LAB_LIBINPUT_INVALID_ENUM) {
 			libinput_device_config_accel_set_profile(libinput_dev,
 				dc->accel_profile);
 		}
 	}
 
-	if (libinput_device_config_middle_emulation_is_available(libinput_dev)
-			== 0 || dc->middle_emu < 0)  {
+	if (libinput_device_config_middle_emulation_is_available(libinput_dev) == 0
+			|| dc->middle_emu == LAB_LIBINPUT_INVALID_ENUM)  {
 		wlr_log(WLR_INFO, "middle emulation not configured");
 	} else {
 		wlr_log(WLR_INFO, "middle emulation configured");
@@ -248,7 +238,7 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 	}
 
 	if (libinput_device_config_dwt_is_available(libinput_dev) == 0
-			|| dc->dwt < 0) {
+			|| dc->dwt == LAB_LIBINPUT_INVALID_ENUM) {
 		wlr_log(WLR_INFO, "dwt not configured");
 	} else {
 		wlr_log(WLR_INFO, "dwt configured");
@@ -258,7 +248,7 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 	if ((dc->click_method != LIBINPUT_CONFIG_CLICK_METHOD_NONE
 			&& (libinput_device_config_click_get_methods(libinput_dev)
 				& dc->click_method) == 0)
-			|| dc->click_method < 0) {
+			|| dc->click_method == LAB_LIBINPUT_INVALID_ENUM) {
 		wlr_log(WLR_INFO, "click method not configured");
 	} else {
 		wlr_log(WLR_INFO, "click method configured");
@@ -278,19 +268,21 @@ libinput_configure_device(struct wlr_input_device *wlr_input_device)
 	if ((dc->send_events_mode != LIBINPUT_CONFIG_SEND_EVENTS_ENABLED
 			&& (libinput_device_config_send_events_get_modes(libinput_dev)
 				& dc->send_events_mode) == 0)
-			|| dc->send_events_mode < 0) {
+			|| dc->send_events_mode == LAB_LIBINPUT_INVALID_ENUM) {
 		wlr_log(WLR_INFO, "send events mode not configured");
 	} else {
 		wlr_log(WLR_INFO, "send events mode configured");
-		libinput_device_config_send_events_set_mode(libinput_dev, dc->send_events_mode);
+		libinput_device_config_send_events_set_mode(
+			libinput_dev, dc->send_events_mode);
 	}
 
 	/* Non-zero if the device can be calibrated, zero otherwise. */
 	if (libinput_device_config_calibration_has_matrix(libinput_dev) == 0
-			|| !dc->have_calibration_matrix) {
+			|| dc->calibration_matrix[0] == LAB_LIBINPUT_INVALID_FLOAT) {
 		wlr_log(WLR_INFO, "calibration matrix not configured");
 	} else {
 		wlr_log(WLR_INFO, "calibration matrix configured");
-		libinput_device_config_calibration_set_matrix(libinput_dev, dc->calibration_matrix);
+		libinput_device_config_calibration_set_matrix(
+			libinput_dev, dc->calibration_matrix);
 	}
 }

@@ -497,11 +497,11 @@ fill_touch(char *nodename, char *content)
 	}
 }
 
-static int
+static uint32_t
 get_accel_profile(const char *s)
 {
 	if (!s) {
-		return -1;
+		return LAB_LIBINPUT_INVALID_ENUM;
 	}
 	if (!strcasecmp(s, "flat")) {
 		return LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT;
@@ -509,10 +509,10 @@ get_accel_profile(const char *s)
 	if (!strcasecmp(s, "adaptive")) {
 		return LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE;
 	}
-	return -1;
+	return LAB_LIBINPUT_INVALID_ENUM;
 }
 
-static int
+static uint32_t
 get_send_events_mode(const char *s)
 {
 	if (!s) {
@@ -532,7 +532,7 @@ get_send_events_mode(const char *s)
 
 err:
 	wlr_log(WLR_INFO, "Not a recognised send events mode");
-	return -1;
+	return LAB_LIBINPUT_INVALID_ENUM;
 }
 
 static void
@@ -655,7 +655,6 @@ fill_libinput_category(char *nodename, char *content)
 			get_send_events_mode(content);
 	} else if (!strcasecmp(nodename, "calibrationMatrix")) {
 		errno = 0;
-		current_libinput_category->have_calibration_matrix = true;
 		float *mat = current_libinput_category->calibration_matrix;
 		gchar **elements = g_strsplit(content, " ", -1);
 		guint i = 0;
@@ -666,15 +665,18 @@ fill_libinput_category(char *nodename, char *content)
 				wlr_log(WLR_ERROR, "invalid calibration matrix element"
 									" %s (index %d), expect six floats",
 									elements[i], i);
-				current_libinput_category->have_calibration_matrix = false;
+				current_libinput_category->calibration_matrix[0] =
+					LAB_LIBINPUT_INVALID_FLOAT;
 				errno = 0;
 				break;
 			}
 		}
-		if (i != 6 && current_libinput_category->have_calibration_matrix) {
+		if (i != 6 && current_libinput_category->calibration_matrix[0]
+				!= LAB_LIBINPUT_INVALID_FLOAT) {
 			wlr_log(WLR_ERROR, "wrong number of calibration matrix elements,"
 								" expected 6, got %d", i);
-			current_libinput_category->have_calibration_matrix = false;
+			current_libinput_category->calibration_matrix[0] =
+				LAB_LIBINPUT_INVALID_FLOAT;
 		}
 		g_strfreev(elements);
 	}
