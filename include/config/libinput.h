@@ -6,6 +6,8 @@
 #include <string.h>
 #include <wayland-server-core.h>
 
+struct wlr_input_device;
+
 enum lab_libinput_device_type {
 	LAB_LIBINPUT_DEVICE_NONE = 0,
 	LAB_LIBINPUT_DEVICE_DEFAULT,
@@ -37,5 +39,6 @@ struct libinput_category {
 enum lab_libinput_device_type get_device_type(const char *s);
 struct libinput_category *libinput_category_create(void);
 struct libinput_category *libinput_category_get_default(void);
+void libinput_configure_device(struct wlr_input_device *wlr_input_device);
 
 #endif /* LABWC_LIBINPUT_H */
