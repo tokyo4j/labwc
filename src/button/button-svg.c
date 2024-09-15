@@ -17,7 +17,7 @@
 
 void
 button_svg_load(const char *button_name, struct lab_data_buffer **buffer,
-		int size)
+		int max_size)
 {
 	if (*buffer) {
 		wlr_buffer_drop(&(*buffer)->base);
@@ -34,7 +34,6 @@ button_svg_load(const char *button_name, struct lab_data_buffer **buffer,
 	}
 
 	GError *err = NULL;
-	RsvgRectangle viewport = { .width = size, .height = size };
 	RsvgHandle *svg = rsvg_handle_new_from_file(filename, &err);
 	if (err) {
 		wlr_log(WLR_DEBUG, "error reading svg %s-%s", filename, err->message);
@@ -46,7 +45,15 @@ button_svg_load(const char *button_name, struct lab_data_buffer **buffer,
 		return;
 	}
 
-	cairo_surface_t *image = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, size, size);
+	RsvgRectangle viewport = { .width = max_size, .height = max_size };
+	gdouble image_width, image_height;
+	if (rsvg_handle_get_intrinsic_size_in_pixels(svg, &image_width, &image_height)
+			&& image_width <= max_size && image_height <= max_size) {
+		viewport.width = image_width;
+		viewport.height = image_height;
+	}
+
+	cairo_surface_t *image = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, max_size, max_size);
 	cairo_t *cr = cairo_create(image);
 
 	rsvg_handle_render_document(svg, cr, &viewport, &err);

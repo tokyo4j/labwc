@@ -383,14 +383,13 @@ load_buttons(struct theme *theme)
 
 #if HAVE_RSVG
 		/* SVG */
-		int size = theme->title_height - 2 * theme->padding_height;
 		if (!*b->active.buffer) {
 			snprintf(filename, sizeof(filename), "%s-active.svg", b->name);
-			button_svg_load(filename, b->active.buffer, size);
+			button_svg_load(filename, b->active.buffer, theme->title_height);
 		}
 		if (!*b->inactive.buffer) {
 			snprintf(filename, sizeof(filename), "%s-inactive.svg", b->name);
-			button_svg_load(filename, b->inactive.buffer, size);
+			button_svg_load(filename, b->inactive.buffer, theme->title_height);
 		}
 #endif
 
