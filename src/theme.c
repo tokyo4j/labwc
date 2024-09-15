@@ -133,7 +133,7 @@ create_hover_fallback(struct theme *theme, const char *icon_name,
 	int icon_height = cairo_image_surface_get_height(icon.surface);
 
 	int width = theme->window_button_width;
-	int height = theme->title_height;
+	int height = theme->window_button_height;
 
 	if (width && height) {
 		/*
@@ -188,7 +188,7 @@ create_hover_fallback(struct theme *theme, const char *icon_name,
 			struct rounded_corner_ctx rounded_ctx = {
 				.box = &(struct wlr_box){
 					.width = theme->padding_width + width,
-					.height = height,
+					.height = theme->padding_height + height,
 				},
 				.radius = rc.corner_radius,
 				.line_width = theme->border_width,
@@ -201,14 +201,13 @@ create_hover_fallback(struct theme *theme, const char *icon_name,
 			cairo_pattern_t *mask_pattern =
 				cairo_pattern_create_for_surface(
 					cairo_get_target(mask_buffer->cairo));
-			int mask_offset;
-			if (corner == LAB_CORNER_TOP_LEFT) {
-				mask_offset = -theme->padding_width;
-			} else {
-				mask_offset = 0;
+			int mask_offset_x = -theme->padding_width;
+			int mask_offset_y = -theme->padding_height;
+			if (corner == LAB_CORNER_TOP_RIGHT) {
+				mask_offset_x = 0;
 			}
 			cairo_save(cairo);
-			cairo_translate(cairo, mask_offset, 0);
+			cairo_translate(cairo, mask_offset_x, mask_offset_y);
 			cairo_mask(cairo, mask_pattern);
 			cairo_restore(cairo);
 			wlr_buffer_drop(&mask_buffer->base);
@@ -612,6 +611,7 @@ theme_builtin(struct theme *theme, struct server *server)
 
 	theme->padding_width = 0;
 	theme->window_button_width = 26;
+	theme->window_button_height = INT_MIN;
 	theme->window_button_spacing = 0;
 	theme->window_button_hover_bg_shape = LAB_RECTANGLE;
 
@@ -814,6 +814,9 @@ entry(struct theme *theme, const char *key, const char *value)
 				"be less than 1, clamping it to 1.");
 			theme->window_button_width = 1;
 		}
+	}
+	if (match_glob(key, "window.button.height")) {
+		theme->window_button_height = atoi(value);
 	}
 	if (match_glob(key, "window.button.spacing")) {
 		theme->window_button_spacing = get_int_if_positive(
@@ -1514,6 +1517,18 @@ post_processing(struct theme *theme)
 	if (theme->title_height < h) {
 		theme->title_height = h + 2 * theme->padding_height;
 	}
+	if (theme->window_button_height == INT_MIN) {
+		theme->window_button_height =
+			theme->title_height - 2 * theme->padding_height;
+	} else if (theme->window_button_height < -theme->title_height) {
+		wlr_log(WLR_ERROR, "Invalid window.button.height");
+		theme->window_button_height = h;
+	} else if (theme->window_button_height <= 0) {
+		theme->window_button_height =
+			theme->title_height - theme->window_button_height;
+	}
+	theme->button_padding_height =
+		(theme->window_button_height - theme->title_height) / 2;
 
 	theme->menu_item_height = font_height(&rc.font_menuitem)
 		+ 2 * theme->menu_item_padding_y;

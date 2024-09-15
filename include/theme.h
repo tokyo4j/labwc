@@ -40,6 +40,8 @@ struct theme {
 	int padding_width;
 	int padding_height;
 
+	int button_padding_height;
+
 	int title_height;
 	int menu_overlap_x;
 	int menu_overlap_y;
@@ -60,6 +62,8 @@ struct theme {
 
 	/* button width */
 	int window_button_width;
+	/* button height */
+	int window_button_height;
 	/* the space between buttons */
 	int window_button_spacing;
 	/* the shape of the hover effect */

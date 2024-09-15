@@ -353,7 +353,8 @@ ssd_titlebar_update(struct ssd *ssd)
 		x = theme->padding_width;
 		wl_list_for_each(b, &rc.title_buttons_left, link) {
 			part = ssd_get_part(&subtree->parts, b->type);
-			wlr_scene_node_set_position(part->node, x, 0);
+			wlr_scene_node_set_position(part->node,
+				x, theme->button_padding_height);
 			x += theme->window_button_width + theme->window_button_spacing;
 		}
 
@@ -365,7 +366,8 @@ ssd_titlebar_update(struct ssd *ssd)
 		wl_list_for_each_reverse(b, &rc.title_buttons_right, link) {
 			part = ssd_get_part(&subtree->parts, b->type);
 			x -= theme->window_button_width + theme->window_button_spacing;
-			wlr_scene_node_set_position(part->node, x, 0);
+			wlr_scene_node_set_position(part->node,
+				x, theme->button_padding_height);
 		}
 	} FOR_EACH_END
 	ssd_update_title(ssd);
