@@ -124,23 +124,23 @@ update_window_icon_buffer(struct wlr_scene_node *button_node,
 struct ssd_part *
 add_scene_button(struct wl_list *part_list, enum ssd_part_type type,
 		struct wlr_scene_tree *parent, struct wlr_buffer *icon_buffer,
-		struct wlr_buffer *hover_buffer, int x, struct view *view)
+		struct wlr_buffer *hover_buffer, int x, int y, struct view *view)
 {
 	struct ssd_part *button_root = add_scene_part(part_list, type);
 	parent = wlr_scene_tree_create(parent);
 	button_root->node = &parent->node;
-	wlr_scene_node_set_position(button_root->node, x, 0);
+	wlr_scene_node_set_position(button_root->node, x, y);
 
 	/* Hitbox */
 	float invisible[4] = { 0, 0, 0, 0 };
 	add_scene_rect(part_list, type, parent,
-		rc.theme->window_button_width, rc.theme->title_height, 0, 0,
+		rc.theme->window_button_width, rc.theme->window_button_height, 0, 0,
 		invisible);
 
 	/* Icon */
 	struct wlr_scene_tree *icon_tree = wlr_scene_tree_create(parent);
 	struct wlr_box icon_geo = get_scale_box(icon_buffer,
-		rc.theme->window_button_width, rc.theme->title_height);
+		rc.theme->window_button_width, rc.theme->window_button_height);
 	struct ssd_part *icon_part = add_scene_buffer(part_list, type,
 		icon_tree, icon_buffer, icon_geo.x, icon_geo.y);
 
@@ -153,7 +153,7 @@ add_scene_button(struct wl_list *part_list, enum ssd_part_type type,
 	struct wlr_scene_tree *hover_tree = wlr_scene_tree_create(parent);
 	wlr_scene_node_set_enabled(&hover_tree->node, false);
 	struct wlr_box hover_geo = get_scale_box(hover_buffer,
-		rc.theme->window_button_width, rc.theme->title_height);
+		rc.theme->window_button_width, rc.theme->window_button_height);
 	struct ssd_part *hover_part = add_scene_buffer(part_list, type,
 		hover_tree, hover_buffer, hover_geo.x, hover_geo.y);
 
@@ -181,7 +181,7 @@ add_toggled_icon(struct ssd_button *button, struct wl_list *part_list,
 {
 	/* Alternate icon */
 	struct wlr_box icon_geo = get_scale_box(icon_buffer,
-		rc.theme->window_button_width, rc.theme->title_height);
+		rc.theme->window_button_width, rc.theme->window_button_height);
 
 	struct ssd_part *alticon_part = add_scene_buffer(part_list, type,
 		button->icon_tree, icon_buffer, icon_geo.x, icon_geo.y);
@@ -193,7 +193,7 @@ add_toggled_icon(struct ssd_button *button, struct wl_list *part_list,
 	wlr_scene_node_set_enabled(alticon_part->node, false);
 
 	struct wlr_box hover_geo = get_scale_box(hover_buffer,
-		rc.theme->window_button_width, rc.theme->title_height);
+		rc.theme->window_button_width, rc.theme->window_button_height);
 	struct ssd_part *althover_part = add_scene_buffer(part_list, type,
 		button->hover_tree, hover_buffer, hover_geo.x, hover_geo.y);
 

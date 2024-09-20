@@ -37,6 +37,9 @@ add_button(struct ssd *ssd, struct ssd_sub_tree *subtree, enum ssd_part_type typ
 	struct ssd_part *btn_root;
 	struct ssd_button *btn;
 
+	/* Center vertically within titlebar */
+	int y = (theme->title_height - theme->window_button_height) / 2;
+
 	switch (type) {
 	case LAB_SSD_BUTTON_WINDOW_ICON: /* fallthrough */
 	case LAB_SSD_BUTTON_WINDOW_MENU:
@@ -45,7 +48,7 @@ add_button(struct ssd *ssd, struct ssd_sub_tree *subtree, enum ssd_part_type typ
 				: &theme->button_menu_inactive_unpressed->base,
 			active ? &theme->button_menu_active_hover->base
 				: &theme->button_menu_inactive_hover->base,
-			x, view);
+			x, y, view);
 		break;
 	case LAB_SSD_BUTTON_ICONIFY:
 		add_scene_button(&subtree->parts, type, parent,
@@ -53,7 +56,7 @@ add_button(struct ssd *ssd, struct ssd_sub_tree *subtree, enum ssd_part_type typ
 				: &theme->button_iconify_inactive_unpressed->base,
 			active ? &theme->button_iconify_active_hover->base
 				: &theme->button_iconify_inactive_hover->base,
-			x, view);
+			x, y, view);
 		break;
 	case LAB_SSD_BUTTON_MAXIMIZE:
 		/* Maximize button has an alternate state when maximized */
@@ -62,7 +65,7 @@ add_button(struct ssd *ssd, struct ssd_sub_tree *subtree, enum ssd_part_type typ
 				: &theme->button_maximize_inactive_unpressed->base,
 			active ? &theme->button_maximize_active_hover->base
 				: &theme->button_maximize_inactive_hover->base,
-			x, view);
+			x, y, view);
 		btn = node_ssd_button_from_node(btn_root->node);
 		add_toggled_icon(btn, &subtree->parts, LAB_SSD_BUTTON_MAXIMIZE,
 			active ? &theme->button_restore_active_unpressed->base
@@ -77,7 +80,7 @@ add_button(struct ssd *ssd, struct ssd_sub_tree *subtree, enum ssd_part_type typ
 				: &theme->button_shade_inactive_unpressed->base,
 			active ? &theme->button_shade_active_hover->base
 				: &theme->button_shade_inactive_hover->base,
-			x, view);
+			x, y, view);
 		btn = node_ssd_button_from_node(btn_root->node);
 		add_toggled_icon(btn, &subtree->parts, LAB_SSD_BUTTON_SHADE,
 			active ? &theme->button_unshade_active_unpressed->base
@@ -92,7 +95,7 @@ add_button(struct ssd *ssd, struct ssd_sub_tree *subtree, enum ssd_part_type typ
 				: &theme->button_omnipresent_inactive_unpressed->base,
 			active ? &theme->button_omnipresent_active_hover->base
 				: &theme->button_omnipresent_inactive_hover->base,
-			x, view);
+			x, y, view);
 		btn = node_ssd_button_from_node(btn_root->node);
 		add_toggled_icon(btn, &subtree->parts, LAB_SSD_BUTTON_OMNIPRESENT,
 			active ? &theme->button_exclusive_active_unpressed->base
@@ -106,7 +109,7 @@ add_button(struct ssd *ssd, struct ssd_sub_tree *subtree, enum ssd_part_type typ
 				: &theme->button_close_inactive_unpressed->base,
 			active ? &theme->button_close_active_hover->base
 				: &theme->button_close_inactive_hover->base,
-			x, view);
+			x, y, view);
 		break;
 	default:
 		assert(false && "invalid titlebar part");
@@ -345,6 +348,8 @@ ssd_titlebar_update(struct ssd *ssd)
 
 	update_visible_buttons(ssd);
 
+	/* Center buttons vertically within titlebar */
+	int y = (theme->title_height - theme->window_button_height) / 2;
 	int x;
 	struct ssd_part *part;
 	struct ssd_sub_tree *subtree;
@@ -359,7 +364,7 @@ ssd_titlebar_update(struct ssd *ssd)
 		x = theme->padding_width;
 		wl_list_for_each(b, &rc.title_buttons_left, link) {
 			part = ssd_get_part(&subtree->parts, b->type);
-			wlr_scene_node_set_position(part->node, x, 0);
+			wlr_scene_node_set_position(part->node, x, y);
 			x += theme->window_button_width + theme->window_button_spacing;
 		}
 
@@ -371,7 +376,7 @@ ssd_titlebar_update(struct ssd *ssd)
 		wl_list_for_each_reverse(b, &rc.title_buttons_right, link) {
 			part = ssd_get_part(&subtree->parts, b->type);
 			x -= theme->window_button_width + theme->window_button_spacing;
-			wlr_scene_node_set_position(part->node, x, 0);
+			wlr_scene_node_set_position(part->node, x, y);
 		}
 	} FOR_EACH_END
 

@@ -133,7 +133,7 @@ create_hover_fallback(struct theme *theme, const char *icon_name,
 	int icon_height = cairo_image_surface_get_height(icon.surface);
 
 	int width = theme->window_button_width;
-	int height = theme->title_height;
+	int height = theme->window_button_height;
 
 	if (width && height) {
 		/*
@@ -642,6 +642,7 @@ theme_builtin(struct theme *theme, struct server *server)
 
 	theme->padding_width = 0;
 	theme->window_button_width = 26;
+	theme->window_button_height = 26;
 	theme->window_button_spacing = 0;
 	theme->window_button_hover_bg_shape = LAB_RECTANGLE;
 
@@ -843,6 +844,14 @@ entry(struct theme *theme, const char *key, const char *value)
 			wlr_log(WLR_ERROR, "window.button.width cannot "
 				"be less than 1, clamping it to 1.");
 			theme->window_button_width = 1;
+		}
+	}
+	if (match_glob(key, "window.button.height")) {
+		theme->window_button_height = atoi(value);
+		if (theme->window_button_height < 1) {
+			wlr_log(WLR_ERROR, "window.button.height cannot "
+				"be less than 1, clamping it to 1.");
+			theme->window_button_height = 1;
 		}
 	}
 	if (match_glob(key, "window.button.spacing")) {
