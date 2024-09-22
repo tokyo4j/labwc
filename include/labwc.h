@@ -386,6 +386,7 @@ struct output {
 	struct wl_list regions;  /* struct region.link */
 
 	struct lab_data_buffer *osd_buffer;
+	struct wl_list osd_snapshot_items;
 
 	struct wl_listener destroy;
 	struct wl_listener frame;

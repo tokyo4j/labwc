@@ -12,6 +12,8 @@
 #include "common/buf.h"
 #include "common/font.h"
 #include "common/graphic-helpers.h"
+#include "common/list.h"
+#include "common/mem.h"
 #include "common/scene-helpers.h"
 #include "config/rcxml.h"
 #include "labwc.h"
@@ -21,6 +23,30 @@
 #include "view.h"
 #include "window-rules.h"
 #include "workspaces.h"
+
+struct snapshot_item {
+	struct wlr_scene_tree *tree;
+	struct wlr_scene_rect *bg;
+	struct wlr_scene_buffer *buffer;
+	struct view *view;
+	struct wl_list link;
+	struct wl_listener destroy;
+};
+
+static void
+destroy_snapshot_item(struct snapshot_item *item)
+{
+	wl_list_remove(&item->link);
+	wl_list_remove(&item->destroy.link);
+	free(item);
+}
+
+static void
+handle_snapshot_node_destroy(struct wl_listener *listener, void *data)
+{
+	struct snapshot_item *item = wl_container_of(listener, item, destroy);
+	destroy_snapshot_item(item);
+}
 
 static void
 destroy_osd_nodes(struct output *output)
@@ -66,6 +92,16 @@ osd_on_view_destroy(struct view *view)
 		return;
 	}
 
+	struct output *output;
+	wl_list_for_each(output, &view->server->outputs, link) {
+		struct snapshot_item *item, *next;
+		wl_list_for_each_safe(item, next, &output->osd_snapshot_items, link) {
+			if (item->view == view) {
+				destroy_snapshot_item(item);
+			}
+		}
+	}
+
 	if (osd_state->cycle_view == view) {
 		/*
 		 * If we are the current OSD selected view, cycle
@@ -86,10 +122,8 @@ osd_on_view_destroy(struct view *view)
 		}
 	}
 
-	if (osd_state->cycle_view) {
-		/* Update the OSD to reflect the view has now gone. */
-		osd_update(view->server);
-	}
+	/* Update the OSD to reflect the view has now gone. */
+	osd_update(view->server);
 
 	if (view->scene_tree) {
 		struct wlr_scene_node *node = &view->scene_tree->node;
@@ -236,12 +270,16 @@ render_node(struct server *server, struct wlr_render_pass *pass,
 		/* TODO: transform */
 		wlr_render_pass_add_texture(pass, &(struct wlr_render_texture_options){
 			.texture = texture,
+			.src_box = scene_buffer->src_box,
 			.dst_box = {
 				.x = x,
 				.y = y,
 				.width = scene_buffer->buffer_width,
 				.height = scene_buffer->buffer_height,
-			}
+			},
+			.alpha = &scene_buffer->opacity,
+			.filter_mode = WLR_SCALE_FILTER_NEAREST,
+			.blend_mode = WLR_RENDER_BLEND_MODE_NONE,
 		});
 		break;
 	case WLR_SCENE_NODE_RECT:
@@ -259,6 +297,10 @@ render_snapshot(struct output *output, struct view *view)
 		box.width, box.height, &output->wlr_output->swapchain->format);
 	struct wlr_render_pass *pass = wlr_renderer_begin_buffer_pass(
 		server->renderer, buffer, NULL);
+	wlr_render_pass_add_rect(pass, &(struct wlr_render_rect_options){
+		.box = {.width = box.width, .height = box.height},
+		.color = {.a = 1},
+	});
 	render_node(server, pass, view->scene_node, 0, 0);
 	if (!wlr_render_pass_submit(pass)) {
 		wlr_log(WLR_ERROR, "failed to submit render pass");
@@ -273,37 +315,30 @@ render_snapshot(struct output *output, struct view *view)
 #define SNAPSHOT_ITEM_HEIGHT 220
 #define SNAPSHOT_WIDTH 200
 #define SNAPSHOT_HEIGHT 200
+#define SNAPSHOT_ITEM_COLOR_SELECTED (float[4]){.25, .58, .95, 1}
+#define SNAPSHOT_ITEM_COLOR (float[4]){1, 1, 1, 1}
 
 static void
-display_osd(struct output *output, struct wl_array *views)
+create_snapshots(struct output *output, struct wl_array *views)
 {
-	struct server *server = output->server;
+	struct view **view;
+	wl_array_for_each(view, views) {
+		struct snapshot_item *item = znew(*item);
+		item->view = *view;
+		item->tree = wlr_scene_tree_create(output->osd_tree);
+		item->destroy.notify = handle_snapshot_node_destroy;
+		wl_signal_add(&item->tree->node.events.destroy, &item->destroy);
 
-	struct view **v;
-	int item_x = SNAPSHOT_ITEM_PADDING;
-	wl_array_for_each(v, views) {
-		struct view *view = *v;
-		struct wlr_scene_tree *tree = wlr_scene_tree_create(output->osd_tree);
-		wlr_scene_node_set_position(&tree->node, item_x, 0);
-
-		float bg_color[4];
-		if (view == server->osd_state.cycle_view) {
-			memcpy(bg_color, (float[4]){.25, .58, .95, 1}, sizeof(bg_color));
-		} else {
-			memcpy(bg_color, (float[4]){1, 1, 1, 1}, sizeof(bg_color));
-		}
-
-		struct wlr_scene_rect *bg = wlr_scene_rect_create(
-			tree, SNAPSHOT_ITEM_WIDTH,
+		float bg_color[4] = {0}; /* updated later */
+		item->bg = wlr_scene_rect_create(
+			item->tree, SNAPSHOT_ITEM_WIDTH,
 			SNAPSHOT_ITEM_HEIGHT, bg_color);
-		(void)bg;
 
-		struct wlr_buffer *snapshot_buffer = render_snapshot(output, view);
+		struct wlr_buffer *snapshot_buffer = render_snapshot(output, item->view);
 		if (!snapshot_buffer) {
-			continue;
+			goto done;
 		}
-		struct wlr_scene_buffer *snapshot_scene_buffer =
-			wlr_scene_buffer_create(tree, snapshot_buffer);
+		item->buffer = wlr_scene_buffer_create(item->tree, snapshot_buffer);
 		wlr_buffer_drop(snapshot_buffer);
 
 		/* TODO: duplicate with get_scale_box() */
@@ -315,20 +350,40 @@ display_osd(struct output *output, struct wl_array *views)
 			snapshot_width = (double)snapshot_width * scale;
 			snapshot_height = (double)snapshot_height * scale;
 		}
-		wlr_scene_buffer_set_dest_size(snapshot_scene_buffer,
+		wlr_scene_buffer_set_dest_size(item->buffer,
 			snapshot_width, snapshot_height);
-		wlr_scene_node_set_position(&snapshot_scene_buffer->node,
+		wlr_scene_node_set_position(&item->buffer->node,
 			(SNAPSHOT_ITEM_WIDTH - snapshot_width) / 2,
 			(SNAPSHOT_ITEM_HEIGHT - snapshot_height) / 2);
+	done:
+		wl_list_append(&output->osd_snapshot_items, &item->link);
+	}
+}
 
+static void
+update_snapshots(struct output *output, struct wl_array *views)
+{
+	if (wl_list_empty(&output->osd_snapshot_items)) {
+		create_snapshots(output, views);
+	}
+
+	int item_x = SNAPSHOT_ITEM_PADDING;
+	struct snapshot_item *item;
+	wl_list_for_each(item, &output->osd_snapshot_items, link) {
+		if (output->server->osd_state.cycle_view == item->view) {
+			wlr_scene_rect_set_color(item->bg,
+				SNAPSHOT_ITEM_COLOR_SELECTED);
+		} else {
+			wlr_scene_rect_set_color(item->bg,
+				SNAPSHOT_ITEM_COLOR);
+		}
+		wlr_scene_node_set_position(&item->tree->node, item_x, 0);
 		item_x += SNAPSHOT_ITEM_WIDTH + SNAPSHOT_ITEM_PADDING;
 	}
 
 	wlr_scene_node_set_position(&output->osd_tree->node,
 		(output->wlr_output->width - item_x) / 2,
 		(output->wlr_output->height - SNAPSHOT_ITEM_HEIGHT) / 2);
-
-	wlr_scene_node_set_enabled(&output->osd_tree->node, true);
 }
 
 void
@@ -347,9 +402,9 @@ osd_update(struct server *server)
 		/* Display the actual OSD */
 		struct output *output;
 		wl_list_for_each(output, &server->outputs, link) {
-			destroy_osd_nodes(output);
 			if (output_is_usable(output)) {
-				display_osd(output, &views);
+				wlr_scene_node_set_enabled(&output->osd_tree->node, true);
+				update_snapshots(output, &views);
 			}
 		}
 	}

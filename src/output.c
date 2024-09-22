@@ -424,6 +424,7 @@ new_output_notify(struct wl_listener *listener, void *data)
 	wl_signal_add(&wlr_output->events.request_state, &output->request_state);
 
 	wl_list_init(&output->regions);
+	wl_list_init(&output->osd_snapshot_items);
 
 	/*
 	 * Create layer-trees (background, bottom, top and overlay) and
