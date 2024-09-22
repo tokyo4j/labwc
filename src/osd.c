@@ -6,6 +6,7 @@
 #include <pango/pangocairo.h>
 #include <wlr/util/log.h>
 #include <wlr/util/box.h>
+#include <wlr/render/swapchain.h>
 #include "buffer.h"
 #include "common/array.h"
 #include "common/buf.h"
@@ -199,185 +200,135 @@ preview_cycled_view(struct view *view)
 	wlr_scene_node_raise_to_top(osd_state->preview_node);
 }
 
-static void
-render_osd(struct server *server, cairo_t *cairo, int w, int h,
-		bool show_workspace, const char *workspace_name,
-		struct wl_array *views)
-{
-	struct view *cycle_view = server->osd_state.cycle_view;
-	struct theme *theme = server->theme;
-
-	cairo_surface_t *surf = cairo_get_target(cairo);
-
-	/* Draw background */
-	set_cairo_color(cairo, theme->osd_bg_color);
-	cairo_rectangle(cairo, 0, 0, w, h);
-	cairo_fill(cairo);
-
-	/* Draw border */
-	set_cairo_color(cairo, theme->osd_border_color);
-	struct wlr_fbox fbox = {
-		.width = w,
-		.height = h,
-	};
-	draw_cairo_border(cairo, fbox, theme->osd_border_width);
-
-	/* Set up text rendering */
-	set_cairo_color(cairo, theme->osd_label_text_color);
-	PangoLayout *layout = pango_cairo_create_layout(cairo);
-	pango_context_set_round_glyph_positions(pango_layout_get_context(layout), false);
-	pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
-
-	PangoFontDescription *desc = font_to_pango_desc(&rc.font_osd);
-	pango_layout_set_font_description(layout, desc);
-
-	pango_cairo_update_layout(cairo, layout);
-
-	int y = theme->osd_border_width + theme->osd_window_switcher_padding;
-
-	/* Draw workspace indicator */
-	if (show_workspace) {
-		/* Center workspace indicator on the x axis */
-		int x = font_width(&rc.font_osd, workspace_name);
-		x = (w - x) / 2;
-		cairo_move_to(cairo, x, y + theme->osd_window_switcher_item_active_border_width);
-		PangoWeight weight = pango_font_description_get_weight(desc);
-		pango_font_description_set_weight(desc, PANGO_WEIGHT_BOLD);
-		pango_layout_set_font_description(layout, desc);
-		pango_layout_set_text(layout, workspace_name, -1);
-		pango_cairo_show_layout(cairo, layout);
-		pango_font_description_set_weight(desc, weight);
-		pango_layout_set_font_description(layout, desc);
-		y += theme->osd_window_switcher_item_height;
+/* based on wlroots code */
+static struct wlr_texture *scene_buffer_get_texture(
+		struct wlr_scene_buffer *scene_buffer,
+		struct wlr_renderer *renderer) {
+	if (!scene_buffer->buffer || scene_buffer->texture) {
+		return scene_buffer->texture;
 	}
-	pango_font_description_free(desc);
-
-	struct buf buf = BUF_INIT;
-
-	/* This is the width of the area available for text fields */
-	int available_width = w - 2 * theme->osd_border_width
-		- 2 * theme->osd_window_switcher_padding
-		- 2 * theme->osd_window_switcher_item_active_border_width;
-
-	/* Draw text for each node */
-	struct view **view;
-	wl_array_for_each(view, views) {
-		/*
-		 *    OSD border
-		 * +---------------------------------+
-		 * |                                 |
-		 * |  item border                    |
-		 * |+-------------------------------+|
-		 * ||                               ||
-		 * ||padding between each field     ||
-		 * ||| field-1 | field-2 | field-n |||
-		 * ||                               ||
-		 * ||                               ||
-		 * |+-------------------------------+|
-		 * |                                 |
-		 * |                                 |
-		 * +---------------------------------+
-		 */
-		int x = theme->osd_border_width
-			+ theme->osd_window_switcher_padding
-			+ theme->osd_window_switcher_item_active_border_width
-			+ theme->osd_window_switcher_item_padding_x;
-
-		int nr_fields = wl_list_length(&rc.window_switcher.fields);
-		struct window_switcher_field *field;
-		wl_list_for_each(field, &rc.window_switcher.fields, link) {
-			buf_clear(&buf);
-			cairo_move_to(cairo, x, y
-				+ theme->osd_window_switcher_item_padding_y
-				+ theme->osd_window_switcher_item_active_border_width);
-
-			osd_field_get_content(field, &buf, *view);
-
-			int field_width = (available_width - (nr_fields + 1)
-				* theme->osd_window_switcher_item_padding_x)
-				* field->width / 100.0;
-			pango_layout_set_width(layout, field_width * PANGO_SCALE);
-			pango_layout_set_text(layout, buf.data, -1);
-			pango_cairo_show_layout(cairo, layout);
-			x += field_width + theme->osd_window_switcher_item_padding_x;
-		}
-
-		if (*view == cycle_view) {
-			/* Highlight current window */
-			struct wlr_fbox fbox = {
-				.x = theme->osd_border_width + theme->osd_window_switcher_padding,
-				.y = y,
-				.width = w
-					- 2 * theme->osd_border_width
-					- 2 * theme->osd_window_switcher_padding,
-				.height = theme->osd_window_switcher_item_height,
-			};
-			draw_cairo_border(cairo, fbox,
-				theme->osd_window_switcher_item_active_border_width);
-			cairo_stroke(cairo);
-		}
-
-		y += theme->osd_window_switcher_item_height;
-	}
-	buf_reset(&buf);
-	g_object_unref(layout);
-
-	cairo_surface_flush(surf);
+	struct wlr_client_buffer *client_buffer =
+		wlr_client_buffer_get(scene_buffer->buffer);
+	assert(client_buffer);
+	return client_buffer->texture;
 }
+
+static void
+render_node(struct server *server, struct wlr_render_pass *pass,
+		struct wlr_scene_node *node, int x, int y)
+{
+	switch (node->type) {
+	case WLR_SCENE_NODE_TREE:;
+		struct wlr_scene_node *child;
+		struct wlr_scene_tree *tree = wlr_scene_tree_from_node(node);
+		wl_list_for_each(child, &tree->children, link) {
+			render_node(server, pass, child, x + node->x, y + node->y);
+		}
+		break;
+	case WLR_SCENE_NODE_BUFFER:;
+		struct wlr_scene_buffer *scene_buffer =
+			wlr_scene_buffer_from_node(node);
+		struct wlr_texture *texture = scene_buffer_get_texture(
+			scene_buffer, server->renderer);
+		if (!texture) {
+			break;
+		}
+		/* TODO: transform */
+		wlr_render_pass_add_texture(pass, &(struct wlr_render_texture_options){
+			.texture = texture,
+			.dst_box = {
+				.x = x,
+				.y = y,
+				.width = scene_buffer->buffer_width,
+				.height = scene_buffer->buffer_height,
+			}
+		});
+		break;
+	case WLR_SCENE_NODE_RECT:
+		wlr_log(WLR_ERROR, "ignoring rect");
+	}
+}
+
+static struct wlr_buffer *
+render_snapshot(struct output *output, struct view *view)
+{
+	struct server *server = output->server;
+	struct wlr_box box;
+	wlr_surface_get_extends(view->surface, &box);
+	struct wlr_buffer *buffer = wlr_allocator_create_buffer(server->allocator,
+		box.width, box.height, &output->wlr_output->swapchain->format);
+	struct wlr_render_pass *pass = wlr_renderer_begin_buffer_pass(
+		server->renderer, buffer, NULL);
+	render_node(server, pass, view->scene_node, 0, 0);
+	if (!wlr_render_pass_submit(pass)) {
+		wlr_log(WLR_ERROR, "failed to submit render pass");
+		wlr_buffer_drop(buffer);
+		return NULL;
+	}
+	return buffer;
+}
+
+#define SNAPSHOT_ITEM_PADDING 10
+#define SNAPSHOT_ITEM_WIDTH 220
+#define SNAPSHOT_ITEM_HEIGHT 220
+#define SNAPSHOT_WIDTH 200
+#define SNAPSHOT_HEIGHT 200
 
 static void
 display_osd(struct output *output, struct wl_array *views)
 {
 	struct server *server = output->server;
-	struct theme *theme = server->theme;
-	bool show_workspace = wl_list_length(&rc.workspace_config.workspaces) > 1;
-	const char *workspace_name = server->workspace_current->name;
 
-	float scale = output->wlr_output->scale;
-	int w = theme->osd_window_switcher_width;
-	if (theme->osd_window_switcher_width_is_percent) {
-		w = output->wlr_output->width / output->wlr_output->scale
-			* theme->osd_window_switcher_width / 100;
+	struct view **v;
+	int item_x = SNAPSHOT_ITEM_PADDING;
+	wl_array_for_each(v, views) {
+		struct view *view = *v;
+		struct wlr_scene_tree *tree = wlr_scene_tree_create(output->osd_tree);
+		wlr_scene_node_set_position(&tree->node, item_x, 0);
+
+		float bg_color[4];
+		if (view == server->osd_state.cycle_view) {
+			memcpy(bg_color, (float[4]){.25, .58, .95, 1}, sizeof(bg_color));
+		} else {
+			memcpy(bg_color, (float[4]){1, 1, 1, 1}, sizeof(bg_color));
+		}
+
+		struct wlr_scene_rect *bg = wlr_scene_rect_create(
+			tree, SNAPSHOT_ITEM_WIDTH,
+			SNAPSHOT_ITEM_HEIGHT, bg_color);
+		(void)bg;
+
+		struct wlr_buffer *snapshot_buffer = render_snapshot(output, view);
+		if (!snapshot_buffer) {
+			continue;
+		}
+		struct wlr_scene_buffer *snapshot_scene_buffer =
+			wlr_scene_buffer_create(tree, snapshot_buffer);
+		wlr_buffer_drop(snapshot_buffer);
+
+		/* TODO: duplicate with get_scale_box() */
+		int snapshot_width = snapshot_buffer->width;
+		int snapshot_height = snapshot_buffer->height;
+		double scale = MIN((double)SNAPSHOT_WIDTH / (double)snapshot_width,
+			(double)SNAPSHOT_HEIGHT / (double)snapshot_height);
+		if (scale < 1.0) {
+			snapshot_width = (double)snapshot_width * scale;
+			snapshot_height = (double)snapshot_height * scale;
+		}
+		wlr_scene_buffer_set_dest_size(snapshot_scene_buffer,
+			snapshot_width, snapshot_height);
+		wlr_scene_node_set_position(&snapshot_scene_buffer->node,
+			(SNAPSHOT_ITEM_WIDTH - snapshot_width) / 2,
+			(SNAPSHOT_ITEM_HEIGHT - snapshot_height) / 2);
+
+		item_x += SNAPSHOT_ITEM_WIDTH + SNAPSHOT_ITEM_PADDING;
 	}
-	int h = wl_array_len(views) * rc.theme->osd_window_switcher_item_height
-		+ 2 * rc.theme->osd_border_width
-		+ 2 * rc.theme->osd_window_switcher_padding;
-	if (show_workspace) {
-		/* workspace indicator */
-		h += theme->osd_window_switcher_item_height;
-	}
 
-	/* Reset buffer */
-	if (output->osd_buffer) {
-		wlr_buffer_drop(&output->osd_buffer->base);
-	}
-	output->osd_buffer = buffer_create_cairo(w, h, scale, true);
-	if (!output->osd_buffer) {
-		wlr_log(WLR_ERROR, "Failed to allocate cairo buffer for the window switcher");
-		return;
-	}
+	wlr_scene_node_set_position(&output->osd_tree->node,
+		(output->wlr_output->width - item_x) / 2,
+		(output->wlr_output->height - SNAPSHOT_ITEM_HEIGHT) / 2);
 
-	/* Render OSD image */
-	cairo_t *cairo = output->osd_buffer->cairo;
-	render_osd(server, cairo, w, h, show_workspace, workspace_name, views);
-
-	struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_create(
-		output->osd_tree, &output->osd_buffer->base);
-	wlr_scene_buffer_set_dest_size(scene_buffer, w, h);
-
-	/* Center OSD */
-	struct wlr_box output_box;
-	wlr_output_layout_get_box(output->server->output_layout,
-		output->wlr_output, &output_box);
-	int lx = output->usable_area.x + output->usable_area.width / 2
-		- w / 2 + output_box.x;
-	int ly = output->usable_area.y + output->usable_area.height / 2
-		- h / 2 + output_box.y;
-	wlr_scene_node_set_position(&scene_buffer->node, lx, ly);
 	wlr_scene_node_set_enabled(&output->osd_tree->node, true);
-
-	/* Update cursor, in case it is within the area covered by OSD */
-	cursor_update_focus(server);
 }
 
 void
