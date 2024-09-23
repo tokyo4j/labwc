@@ -1023,6 +1023,12 @@ cursor_process_button_press(struct seat *seat, uint32_t button, uint32_t time_ms
 		return false;
 	}
 
+	if (server->input_mode == LAB_INPUT_STATE_MOVE
+			|| server->input_mode == LAB_INPUT_STATE_RESIZE) {
+		/* Press event is ignored while move/resize */
+		return false;
+	}
+
 	/*
 	 * On press, set focus to a non-view surface that wants it.
 	 * Action processing does not run for these surfaces and thus
