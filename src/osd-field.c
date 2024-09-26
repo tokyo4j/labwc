@@ -306,6 +306,8 @@ osd_field_arg_from_xml_node(struct window_switcher_field *field,
 		} else if (!strcmp(content, "output")) {
 			/* Keep old defaults */
 			field->content = LAB_FIELD_OUTPUT_SHORT;
+		} else if (!strcmp(content, "icon")) {
+			field->content = LAB_FIELD_ICON;
 		} else if (!strcmp(content, "custom")) {
 			field->content = LAB_FIELD_CUSTOM;
 		} else {

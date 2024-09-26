@@ -13,6 +13,11 @@
 #include "common/graphic-helpers.h"
 #include "common/scene-helpers.h"
 #include "config/rcxml.h"
+
+#if HAVE_LIBSFDO
+#include "icon-loader.h"
+#endif
+
 #include "labwc.h"
 #include "node.h"
 #include "osd.h"
@@ -286,21 +291,49 @@ render_osd(struct server *server, cairo_t *cairo, int w, int h,
 		int field_y = item_y
 			+ theme->osd_window_switcher_item_active_border_width
 			+ theme->osd_window_switcher_item_padding_y;
+		int field_height = theme->osd_window_switcher_item_height
+			- 2 * theme->osd_window_switcher_item_active_border_width
+			- 2 * theme->osd_window_switcher_item_padding_y;
 
 		int nr_fields = wl_list_length(&rc.window_switcher.fields);
 		struct window_switcher_field *field;
 		wl_list_for_each(field, &rc.window_switcher.fields, link) {
 			buf_clear(&buf);
-			cairo_move_to(cairo, field_x, field_y);
-
-			osd_field_get_content(field, &buf, *view);
-
 			int field_width = (available_width - (nr_fields + 1)
 				* theme->osd_window_switcher_item_padding_x)
 				* field->width / 100.0;
-			pango_layout_set_width(layout, field_width * PANGO_SCALE);
-			pango_layout_set_text(layout, buf.data, -1);
-			pango_cairo_show_layout(cairo, layout);
+
+			if (field->content == LAB_FIELD_ICON) {
+				const char *app_id = view_get_string_prop(*view, "app_id");
+				if (!app_id) {
+					goto next_field;
+				}
+				int icon_size = MIN(field_width, field_height);
+				struct lab_data_buffer *icon_buf =
+					icon_loader_lookup(server, app_id, icon_size, 1);
+				if (!icon_buf) {
+					goto next_field;
+				}
+				cairo_surface_t *icon_surf =
+					cairo_get_target(icon_buf->cairo);
+				double scale = MIN(
+					(double)field_width / (double)icon_buf->unscaled_width,
+					(double)field_height / (double)icon_buf->unscaled_height);
+				cairo_save(cairo);
+				cairo_translate(cairo, field_x, field_y);
+				cairo_scale(cairo, scale, scale);
+				cairo_set_source_surface(cairo, icon_surf, 0, 0);
+				cairo_paint(cairo);
+				cairo_restore(cairo);
+				wlr_buffer_drop(&icon_buf->base);
+			} else {
+				cairo_move_to(cairo, field_x, field_y);
+				osd_field_get_content(field, &buf, *view);
+				pango_layout_set_width(layout, field_width * PANGO_SCALE);
+				pango_layout_set_text(layout, buf.data, -1);
+				pango_cairo_show_layout(cairo, layout);
+			}
+		next_field:
 			field_x += field_width + theme->osd_window_switcher_item_padding_x;
 		}
 

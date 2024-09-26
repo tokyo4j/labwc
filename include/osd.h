@@ -20,6 +20,7 @@ enum window_switcher_field_content {
 	LAB_FIELD_WIN_STATE_ALL,
 	LAB_FIELD_OUTPUT,
 	LAB_FIELD_OUTPUT_SHORT,
+	LAB_FIELD_ICON,
 	LAB_FIELD_CUSTOM,
 
 	LAB_FIELD_COUNT
@@ -48,7 +49,7 @@ void osd_preview_restore(struct server *server);
 /* Notify OSD about a destroying view */
 void osd_on_view_destroy(struct view *view);
 
-/* Used by osd.c internally to render window switcher fields */
+/* Used by osd.c internally to render window switcher fields except for icon */
 void osd_field_get_content(struct window_switcher_field *field,
 	struct buf *buf, struct view *view);
 
