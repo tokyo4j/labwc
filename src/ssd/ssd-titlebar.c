@@ -660,8 +660,7 @@ ssd_update_window_icon(struct ssd *ssd)
 
 	struct theme *theme = ssd->view->server->theme;
 
-	int icon_size = MIN(theme->window_button_width,
-		theme->title_height - 2 * theme->padding_height);
+	int icon_size = MIN(theme->window_button_width, theme->window_button_height);
 	/* TODO: take into account output scales */
 	int icon_scale = 1;
 

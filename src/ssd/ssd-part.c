@@ -113,7 +113,7 @@ update_window_icon_buffer(struct wlr_scene_node *button_node,
 
 	struct wlr_box icon_geo = get_scale_box(buffer,
 		rc.theme->window_button_width,
-		rc.theme->title_height);
+		rc.theme->window_button_height);
 
 	wlr_scene_buffer_set_buffer(scene_buffer, buffer);
 	wlr_scene_buffer_set_dest_size(scene_buffer,
