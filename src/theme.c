@@ -781,10 +781,6 @@ entry(struct theme *theme, const char *key, const char *value)
 		theme->padding_height = get_int_if_positive(
 			value, "padding.height");
 	}
-	if (match_glob(key, "titlebar.height")) {
-		theme->title_height = get_int_if_positive(
-			value, "titlebar.height");
-	}
 	if (match_glob(key, "menu.items.padding.x")) {
 		theme->menu_item_padding_x = get_int_if_positive(
 			value, "menu.items.padding.x");
@@ -1550,9 +1546,7 @@ static void
 post_processing(struct theme *theme)
 {
 	int h = MAX(font_height(&rc.font_activewindow), font_height(&rc.font_inactivewindow));
-	if (theme->title_height < h) {
-		theme->title_height = h + 2 * theme->padding_height;
-	}
+	theme->title_height = h + 2 * theme->padding_height;
 
 	theme->menu_item_height = font_height(&rc.font_menuitem)
 		+ 2 * theme->menu_item_padding_y;
