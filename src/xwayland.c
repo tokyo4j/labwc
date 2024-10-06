@@ -614,7 +614,7 @@ handle_map_request(struct wl_listener *listener, void *data)
 static void
 check_natural_geometry(struct view *view)
 {
-	int min_width = view_get_min_width();
+	int min_width = view_get_min_width(view);
 
 	/*
 	 * Some applications (example: Thonny) don't set a reasonable

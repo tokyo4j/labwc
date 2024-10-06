@@ -220,7 +220,7 @@ snap_shrink_to_next_edge(struct view *view,
 
 	*geo = view->pending;
 	uint32_t resize_edges;
-	int min_width = view_get_min_width();
+	int min_width = view_get_min_width(view);
 
 	/*
 	 * First shrink the view along the relevant edge. The maximum shrink

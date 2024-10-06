@@ -12,6 +12,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 #define LAB_MIN_VIEW_HEIGHT 60
+#define LAB_MIN_VIEW_WIDTH_NOTITLE 60
 
 /*
  * Fallback view geometry used in some cases where a better position
@@ -555,7 +556,7 @@ const char *view_get_string_prop(struct view *view, const char *prop);
 void view_update_title(struct view *view);
 void view_update_app_id(struct view *view);
 void view_reload_ssd(struct view *view);
-int view_get_min_width(void);
+int view_get_min_width(struct view *view);
 
 void view_set_shade(struct view *view, bool shaded);
 
