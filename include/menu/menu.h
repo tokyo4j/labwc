@@ -22,7 +22,9 @@ enum menu_align {
 
 struct menu_scene {
 	struct wlr_scene_tree *tree;
+	/* scene_rect is set for separator */
 	struct wlr_scene_node *text;
+	/* NULL for separator */
 	struct wlr_scene_node *background;
 	struct scaled_font_buffer *buffer;
 };
@@ -68,6 +70,7 @@ struct menu {
 		struct menuitem *item;
 	} selection;
 	struct wlr_scene_tree *scene_tree;
+	struct wlr_scene_node *background;
 	bool is_pipemenu;
 	enum menu_align align;
 

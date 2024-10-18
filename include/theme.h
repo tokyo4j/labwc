@@ -47,6 +47,12 @@ struct theme {
 	int title_height;
 	int menu_overlap_x;
 	int menu_overlap_y;
+	int menu_border_width;
+	int menu_corner_radius;
+	float menu_bg_color[4];
+	float menu_border_color[4];
+	int menu_padding_width;
+	int menu_padding_height;
 
 	/* colors */
 	float window_active_border_color[4];
@@ -72,12 +78,15 @@ struct theme {
 
 	int menu_item_padding_x;
 	int menu_item_padding_y;
+	/* This includs menu_item_padding_y */
 	int menu_item_height;
 
 	float menu_items_bg_color[4];
 	float menu_items_text_color[4];
 	float menu_items_active_bg_color[4];
 	float menu_items_active_text_color[4];
+	float menu_items_active_border_color[4];
+	int menu_items_active_corner_radius;
 
 	int menu_min_width;
 	int menu_max_width;
