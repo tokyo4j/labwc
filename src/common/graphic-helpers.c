@@ -76,6 +76,48 @@ multi_rect_set_size(struct multi_rect *rect, int width, int height)
 	}
 }
 
+static const double deg = 0.017453292519943295;
+
+struct lab_data_buffer *
+create_rounded_rect(int width, int height, int border_width, int radius,
+		int scale, float fill_color[4], float border_color[4])
+{
+	struct lab_data_buffer *buffer = buffer_create_cairo(width, height, scale);
+	cairo_t *cairo = buffer->cairo;
+	cairo_save(cairo);
+
+	/* Clear background */
+	cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
+	cairo_paint(cairo);
+
+	double w = width - border_width;
+	double h = height - border_width;
+	double half_border_width = (double)border_width / 2;
+	cairo_translate(cairo, half_border_width, half_border_width);
+
+	cairo_new_sub_path(cairo);
+	cairo_arc(cairo, radius, radius, radius, 180 * deg, 270 * deg);
+	cairo_line_to(cairo, w - radius, 0);
+	cairo_arc(cairo, w - radius, radius, radius, -90 * deg, 0 * deg);
+	cairo_line_to(cairo, w, h - radius);
+	cairo_arc(cairo, w - radius, h - radius, radius, 0 * deg, 90 * deg);
+	cairo_line_to(cairo, radius, h);
+	cairo_arc(cairo, radius, h - radius, radius, 90 * deg, 180 * deg);
+	cairo_close_path(cairo);
+
+	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
+	cairo_set_line_width(cairo, border_width);
+	set_cairo_color(cairo, fill_color);
+	cairo_fill_preserve(cairo);
+	set_cairo_color(cairo, border_color);
+	cairo_set_line_width(cairo, border_width);
+	cairo_stroke(cairo);
+
+	cairo_restore(cairo);
+
+	return buffer;
+}
+
 /* Draws a border with a specified line width */
 void
 draw_cairo_border(cairo_t *cairo, struct wlr_fbox fbox, double line_width)
