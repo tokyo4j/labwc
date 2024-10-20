@@ -394,11 +394,10 @@ struct output {
 	struct wlr_scene_tree *osd_tree;
 	struct wlr_scene_tree *session_lock_tree;
 	struct wlr_scene_buffer *workspace_osd;
+	struct wlr_scene_buffer *switcher_osd;
 	struct wlr_box usable_area;
 
 	struct wl_list regions;  /* struct region.link */
-
-	struct lab_data_buffer *osd_buffer;
 
 	struct wl_listener destroy;
 	struct wl_listener frame;

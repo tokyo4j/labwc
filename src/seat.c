@@ -582,6 +582,10 @@ seat_finish(struct server *server)
 		input_device_destroy(&input->destroy, NULL);
 	}
 
+	if (seat->workspace_osd_timer) {
+		wl_event_source_remove(seat->workspace_osd_timer);
+	}
+
 	input_handlers_finish(seat);
 	input_method_relay_finish(seat->input_method_relay);
 }

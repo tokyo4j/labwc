@@ -184,6 +184,20 @@ handle_workspace_activate(struct wl_listener *listener, void *data)
 	wlr_log(WLR_INFO, "activating workspace %s", workspace->name);
 }
 
+/* Called on server->scene destruction */
+static void
+handle_workspace_node_destroy(struct wl_listener *listener, void *data)
+{
+	/* FIXME: duplicate with destroy_workspace() */
+	struct workspace *workspace = wl_container_of(listener, workspace,
+		on.node_destroy);
+	zfree(workspace->name);
+	wl_list_remove(&workspace->link);
+
+	lab_cosmic_workspace_destroy(workspace->cosmic_workspace);
+	free(workspace);
+}
+
 /* Internal API */
 static void
 add_workspace(struct server *server, const char *name)
@@ -207,6 +221,9 @@ add_workspace(struct server *server, const char *name)
 
 	workspace->on.activate.notify = handle_workspace_activate;
 	wl_signal_add(&workspace->cosmic_workspace->events.activate, &workspace->on.activate);
+
+	workspace->on.node_destroy.notify = handle_workspace_node_destroy;
+	wl_signal_add(&workspace->tree->node.events.destroy, &workspace->on.node_destroy);
 }
 
 static struct workspace *
@@ -507,14 +524,4 @@ workspaces_reconfigure(struct server *server)
 		actual_workspace_link = actual_workspace_link->next;
 		destroy_workspace(actual_workspace);
 	}
-}
-
-void
-workspaces_destroy(struct server *server)
-{
-	struct workspace *workspace, *tmp;
-	wl_list_for_each_safe(workspace, tmp, &server->workspaces.all, link) {
-		destroy_workspace(workspace);
-	}
-	assert(wl_list_empty(&server->workspaces.all));
 }
