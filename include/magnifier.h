@@ -8,6 +8,7 @@ struct server;
 struct output;
 struct wlr_buffer;
 struct wlr_box;
+struct wlr_output_state;
 
 enum magnify_dir {
 	MAGNIFY_INCREASE,
@@ -16,9 +17,8 @@ enum magnify_dir {
 
 void magnify_toggle(struct server *server);
 void magnify_set_scale(struct server *server, enum magnify_dir dir);
-bool output_wants_magnification(struct output *output);
-void magnify(struct output *output, struct wlr_buffer *output_buffer,
-	struct wlr_box *damage);
+bool magnifier_needs_redraw(struct output *output);
+void magnify(struct output *output, struct wlr_output_state *state);
 bool is_magnify_on(void);
 void magnify_reset(void);
 

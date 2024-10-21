@@ -407,6 +407,8 @@ struct output {
 	bool leased;
 	bool gamma_lut_changed;
 
+	pixman_region32_t magnifier_damage;
+
 	uint32_t nr_tearing_failures;
 };
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <assert.h>
+#include <wlr/backend/wayland.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/render/swapchain.h>
 #include "common/box.h"
@@ -44,11 +45,17 @@ magnify_reset(void)
 }
 
 void
-magnify(struct output *output, struct wlr_buffer *output_buffer, struct wlr_box *damage)
+magnify(struct output *output, struct wlr_output_state *state)
 {
 	struct server *server = output->server;
 	struct theme *theme = server->theme;
 	bool fullscreen = (rc.mag_width == -1 || rc.mag_height == -1);
+
+	struct wlr_buffer *output_buffer = state->buffer;
+	if (!output_buffer) {
+		return;
+	}
+
 	struct wlr_box output_box = {
 		.x = 0,
 		.y = 0,
@@ -202,29 +209,33 @@ magnify(struct output *output, struct wlr_buffer *output_buffer, struct wlr_box 
 	}
 
 	/* And finally mark the extra damage */
-	*damage = border_box;
+	pixman_region32_union_rect(&output->magnifier_damage,
+		&output->magnifier_damage, border_box.x, border_box.y,
+		border_box.width, border_box.height);
+	pixman_region32_union(&state->damage, &state->damage,
+		&output->magnifier_damage);
 cleanup:
 	wlr_texture_destroy(tmp_texture);
 	wlr_texture_destroy(output_texture);
 }
 
 bool
-output_wants_magnification(struct output *output)
+magnifier_needs_redraw(struct output *output)
 {
 	static double x = -1;
 	static double y = -1;
+	static bool was_magnify_on = false;
 	struct wlr_cursor *cursor = output->server->seat.cursor;
-	if (!magnify_on) {
-		x = -1;
-		y = -1;
-		return false;
-	}
-	if (cursor->x == x && cursor->y == y) {
-		return false;
-	}
+
+	bool needs_redraw = (cursor->x != x || cursor->y != y)
+		|| (magnify_on != was_magnify_on)
+		|| (magnify_on && wlr_output_is_wl(output->wlr_output));
+
 	x = cursor->x;
 	y = cursor->y;
-	return output_nearest_to_cursor(output->server) == output;
+	was_magnify_on = magnify_on;
+
+	return needs_redraw;
 }
 
 static void
