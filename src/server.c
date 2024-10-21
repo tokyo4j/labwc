@@ -299,7 +299,7 @@ handle_renderer_lost(struct wl_listener *listener, void *data)
 
 	reload_config_and_theme(server);
 
-	magnify_reset();
+	magnifier_reset();
 
 	wlr_allocator_destroy(old_allocator);
 	wlr_renderer_destroy(old_renderer);
@@ -634,4 +634,6 @@ server_finish(struct server *server)
 #if HAVE_LIBSFDO
 	icon_loader_finish(server);
 #endif
+
+	magnifier_reset();
 }

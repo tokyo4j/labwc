@@ -1250,9 +1250,21 @@ entry(xmlNode *node, char *nodename, char *content)
 	} else if (!strcasecmp(nodename, "height.magnifier")) {
 		rc.mag_height = atoi(content);
 	} else if (!strcasecmp(nodename, "initScale.magnifier")) {
-		set_float(content, &rc.mag_scale);
+		float mag_scale;
+		set_float(content, &mag_scale);
+		if (mag_scale > 1.0) {
+			rc.mag_scale = mag_scale;
+		} else {
+			wlr_log(WLR_ERROR, "Invalid <magnifier><initScale>");
+		}
 	} else if (!strcasecmp(nodename, "increment.magnifier")) {
-		set_float(content, &rc.mag_increment);
+		float mag_increment;
+		set_float(content, &mag_increment);
+		if (mag_increment > 0.0) {
+			rc.mag_increment = mag_increment;
+		} else {
+			wlr_log(WLR_ERROR, "Invalid <magnifier><increment>");
+		}
 	} else if (!strcasecmp(nodename, "useFilter.magnifier")) {
 		set_bool(content, &rc.mag_filter);
 	}
@@ -1726,10 +1738,6 @@ post_processing(void)
 	if (!wl_list_length(&rc.window_switcher.fields)) {
 		wlr_log(WLR_INFO, "load default window switcher fields");
 		load_default_window_switcher_fields();
-	}
-
-	if (rc.mag_scale <= 0.0) {
-		rc.mag_scale = 1.0;
 	}
 }
 

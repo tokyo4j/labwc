@@ -214,6 +214,8 @@ output_destroy_notify(struct wl_listener *listener, void *data)
 
 	wlr_output_state_finish(&output->pending);
 
+	pixman_region32_fini(&output->magnifier_damage);
+
 	/*
 	 * Ensure that we don't accidentally try to dereference
 	 * the output pointer in some output event handler like
@@ -428,6 +430,8 @@ new_output_notify(struct wl_listener *listener, void *data)
 	wl_signal_add(&wlr_output->events.request_state, &output->request_state);
 
 	wl_list_init(&output->regions);
+
+	pixman_region32_init(&output->magnifier_damage);
 
 	/*
 	 * Create layer-trees (background, bottom, top and overlay) and

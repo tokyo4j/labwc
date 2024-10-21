@@ -88,17 +88,15 @@ lab_wlr_scene_output_commit(struct wlr_scene_output *scene_output,
 	assert(state);
 	struct wlr_output *wlr_output = scene_output->output;
 	struct output *output = wlr_output->data;
-	bool wants_magnification = output_wants_magnification(output);
 
-	/*
-	 * FIXME: Regardless of wants_magnification, we are currently adding
-	 * damages to next frame when magnifier is shown, which forces
-	 * rendering on every output commit and overloads CPU.
-	 * We also need to verify the necessity of wants_magnification.
-	 */
 	if (!wlr_output->needs_frame && !pixman_region32_not_empty(
-			&scene_output->pending_commit_damage) && !wants_magnification) {
+			&scene_output->pending_commit_damage)) {
 		return true;
+	}
+
+	if (pixman_region32_not_empty(&output->magnifier_damage)) {
+		scene_output_damage(scene_output, &output->magnifier_damage);
+		pixman_region32_clear(&output->magnifier_damage);
 	}
 
 	if (!wlr_scene_output_build_state(scene_output, state, NULL)) {
@@ -107,9 +105,8 @@ lab_wlr_scene_output_commit(struct wlr_scene_output *scene_output,
 		return false;
 	}
 
-	struct wlr_box additional_damage = {0};
-	if (state->buffer && is_magnify_on()) {
-		magnify(output, state->buffer, &additional_damage);
+	if (magnifier_is_enabled()) {
+		magnifier_draw(output, state);
 	}
 
 	if (state == &output->pending) {
@@ -122,15 +119,6 @@ lab_wlr_scene_output_commit(struct wlr_scene_output *scene_output,
 		wlr_log(WLR_INFO, "Failed to commit state for output %s",
 			wlr_output->name);
 		return false;
-	}
-
-	if (!wlr_box_empty(&additional_damage)) {
-		pixman_region32_t region;
-		pixman_region32_init_rect(&region,
-			additional_damage.x, additional_damage.y,
-			additional_damage.width, additional_damage.height);
-		scene_output_damage(scene_output, &region);
-		pixman_region32_fini(&region);
 	}
 
 	return true;
