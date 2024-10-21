@@ -112,6 +112,10 @@ lab_wlr_scene_output_commit(struct wlr_scene_output *scene_output,
 		magnify(output, state->buffer, &additional_damage);
 	}
 
+	/*
+	 * TODO: we should also damage state->damage as wayland backend sends
+	 * wl_surface.damage depending on it.
+	 */
 	if (state == &output->pending) {
 		if (!wlr_output_commit(wlr_output)) {
 			wlr_log(WLR_INFO, "Failed to commit output %s",

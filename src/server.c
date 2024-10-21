@@ -634,4 +634,6 @@ server_finish(struct server *server)
 #if HAVE_LIBSFDO
 	icon_loader_finish(server);
 #endif
+
+	magnify_reset();
 }
