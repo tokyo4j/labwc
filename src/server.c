@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <wlr/backend/headless.h>
 #include <wlr/backend/multi.h>
+#include <wlr/backend/session.h>
 #include <wlr/types/wlr_data_control_v1.h>
 #include <wlr/types/wlr_drm.h>
 #include <wlr/types/wlr_export_dmabuf_v1.h>
@@ -305,6 +306,16 @@ handle_renderer_lost(struct wl_listener *listener, void *data)
 	wlr_renderer_destroy(old_renderer);
 }
 
+static void
+handle_session_active(struct wl_listener *listener, void *data)
+{
+	struct server *server = wl_container_of(listener, server, session_active);
+	struct output *output;
+	wl_list_for_each(output, &server->outputs, link) {
+		wlr_output_schedule_frame(output->wlr_output);
+	}
+}
+
 void
 server_init(struct server *server)
 {
@@ -353,6 +364,9 @@ server_init(struct server *server)
 		fprintf(stderr, helpful_seat_error_message);
 		exit(EXIT_FAILURE);
 	}
+
+	server->session_active.notify = handle_session_active;
+	wl_signal_add(&server->session->events.active, &server->session_active);
 
 	/* Create headless backend to enable adding virtual outputs later on */
 	wlr_multi_for_each_backend(server->backend,
