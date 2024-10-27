@@ -158,6 +158,10 @@ request_cursor_notify(struct wl_listener *listener, void *data)
 		return;
 	}
 
+	if (seat->touch_is_down) {
+		return;
+	}
+
 	/*
 	 * This event is raised by the seat when a client provides a cursor
 	 * image
@@ -347,6 +351,11 @@ cursor_set(struct seat *seat, enum lab_cursors cursor)
 		return;
 	}
 
+	if (seat->touch_is_down) {
+		wlr_cursor_unset_image(seat->cursor);
+		return;
+	}
+
 	wlr_cursor_set_xcursor(seat->cursor, seat->xcursor_manager,
 		cursor_names[cursor]);
 	seat->server_cursor = cursor;
@@ -507,8 +516,10 @@ cursor_update_common(struct server *server, struct cursor_context *ctx,
 			if (has_focus) {
 				wlr_seat_pointer_notify_clear_focus(wlr_seat);
 			}
-			wlr_seat_pointer_notify_enter(wlr_seat, ctx->surface,
-				ctx->sx, ctx->sy);
+			if (!seat->touch_is_down) {
+				wlr_seat_pointer_notify_enter(wlr_seat, ctx->surface,
+					ctx->sx, ctx->sy);
+			}
 			seat->server_cursor = LAB_CURSOR_CLIENT;
 		}
 		if (cursor_has_moved) {

@@ -8,7 +8,6 @@
 #include "idle.h"
 #include "input/touch.h"
 #include "labwc.h"
-#include "config/mousebind.h"
 #include "action.h"
 
 /* Holds layout -> surface offsets to report motion events in relative coords */
@@ -57,17 +56,17 @@ handle_touch_motion(struct wl_listener *listener, void *data)
 	wl_list_for_each(touch_point, &seat->touch_points, link) {
 		if (touch_point->touch_id == event->touch_id) {
 			if (touch_point->surface) {
-				/* Convert coordinates: first [0, 1] => layout */
-				double lx, ly;
-				wlr_cursor_absolute_to_layout_coords(seat->cursor,
-					&event->touch->base, event->x, event->y, &lx, &ly);
+				wlr_cursor_warp_absolute(seat->cursor,
+					&event->touch->base, event->x, event->y);
 
-				/* Apply offsets to get surface coords before reporting event */
-				double sx = lx - touch_point->x_offset;
-				double sy = ly - touch_point->y_offset;
-
-				wlr_seat_touch_notify_motion(seat->seat, event->time_msec,
-					event->touch_id, sx, sy);
+				double sx, sy;
+				bool notify = cursor_process_motion(
+					seat->server, event->time_msec, &sx, &sy);
+				if (notify) {
+					wlr_seat_touch_notify_motion(
+						seat->seat, event->time_msec,
+						event->touch_id, sx, sy);
+				}
 			} else {
 				cursor_emulate_move_absolute(seat, &event->touch->base,
 					event->x, event->y, event->time_msec);
@@ -103,27 +102,28 @@ handle_touch_down(struct wl_listener *listener, void *data)
 	wl_list_insert(&seat->touch_points, &touch_point->link);
 
 	if (touch_point->surface) {
-		/* Convert coordinates: first [0, 1] => layout */
-		double lx, ly;
-		wlr_cursor_absolute_to_layout_coords(seat->cursor,
-			&event->touch->base, event->x, event->y, &lx, &ly);
+		/* Hide cursor and clear pointer focus */
+		seat->touch_is_down = true;
+		wlr_cursor_unset_image(seat->cursor);
+		wlr_seat_pointer_clear_focus(seat->seat);
 
-		/* Apply offsets to get surface coords before reporting event */
-		double sx = lx - x_offset;
-		double sy = ly - y_offset;
+		wlr_cursor_warp_absolute(seat->cursor, &event->touch->base,
+			event->x, event->y);
 
-		struct view *view = view_from_wlr_surface(touch_point->surface);
-		struct mousebind *mousebind;
-		wl_list_for_each(mousebind, &rc.mousebinds, link) {
-			if (mousebind->mouse_event == MOUSE_ACTION_PRESS
-					&& mousebind->button == BTN_LEFT
-					&& mousebind->context == LAB_SSD_CLIENT) {
-				actions_run(view, seat->server, &mousebind->actions, NULL);
-			}
+		bool notify = cursor_process_button_press(seat, BTN_LEFT,
+			event->time_msec);
+		if (notify) {
+			/* Convert coordinates: first [0, 1] => layout */
+			double lx, ly;
+			wlr_cursor_absolute_to_layout_coords(seat->cursor,
+				&event->touch->base, event->x, event->y, &lx, &ly);
+			/* Apply offsets to get surface coords before reporting event */
+			double sx = lx - x_offset;
+			double sy = ly - y_offset;
+			wlr_seat_touch_notify_down(seat->seat,
+				touch_point->surface, event->time_msec,
+				event->touch_id, sx, sy);
 		}
-
-		wlr_seat_touch_notify_down(seat->seat, touch_point->surface,
-			event->time_msec, event->touch_id, sx, sy);
 	} else {
 		cursor_emulate_move_absolute(seat, &event->touch->base,
 			event->x, event->y, event->time_msec);
@@ -143,8 +143,13 @@ handle_touch_up(struct wl_listener *listener, void *data)
 	wl_list_for_each_safe(touch_point, tmp, &seat->touch_points, link) {
 		if (touch_point->touch_id == event->touch_id) {
 			if (touch_point->surface) {
-				wlr_seat_touch_notify_up(seat->seat, event->time_msec,
-					event->touch_id);
+				bool notify = cursor_process_button_release(
+					seat, BTN_LEFT, event->time_msec);
+				if (notify) {
+					wlr_seat_touch_notify_up(seat->seat,
+						event->time_msec, event->touch_id);
+				}
+				cursor_finish_button_release(seat, BTN_LEFT);
 			} else {
 				cursor_emulate_button(seat, BTN_LEFT,
 					WL_POINTER_BUTTON_STATE_RELEASED, event->time_msec);
@@ -154,6 +159,7 @@ handle_touch_up(struct wl_listener *listener, void *data)
 			break;
 		}
 	}
+	seat->touch_is_down = false;
 }
 
 void
