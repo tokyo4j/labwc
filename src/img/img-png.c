@@ -43,8 +43,8 @@ ispng(const char *filename)
 #undef PNG_BYTES_TO_CHECK
 
 void
-img_png_load(const char *filename, struct lab_data_buffer **buffer, int size,
-		float scale)
+img_png_load(const char *filename, struct lab_data_buffer **buffer,
+		int max_width, int max_height, float scale)
 {
 	if (*buffer) {
 		wlr_buffer_drop(&(*buffer)->base);
@@ -64,5 +64,6 @@ img_png_load(const char *filename, struct lab_data_buffer **buffer, int size,
 		return;
 	}
 
-	*buffer = buffer_convert_cairo_surface_for_icon(image, size, scale);
+	*buffer = buffer_convert_cairo_surface_for_icon(image,
+		max_width, max_height, scale);
 }

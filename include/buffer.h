@@ -71,7 +71,8 @@ struct lab_data_buffer *buffer_create_cairo(uint32_t logical_width,
  * CAIRO_FORMAT_ARGB32 if needed.
  */
 struct lab_data_buffer *buffer_convert_cairo_surface_for_icon(
-	cairo_surface_t *surface, uint32_t icon_size, float scale);
+	cairo_surface_t *surface, uint32_t max_width, uint32_t max_height,
+	float scale);
 
 /*
  * Create a buffer which holds (and takes ownership of) raw pixel data

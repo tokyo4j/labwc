@@ -244,20 +244,21 @@ load_button(struct theme *theme, struct button *b, int active)
 
 	zdrop(buffer);
 
-	int size = theme->window_button_height;
+	int width = theme->window_button_width;
+	int height = theme->window_button_height;
 	float scale = 1; /* TODO: account for output scale */
 
 	/* PNG */
 	get_button_filename(filename, sizeof(filename), b->name,
 		active ? "-active.png" : "-inactive.png");
-	img_png_load(filename, buffer, size, scale);
+	img_png_load(filename, buffer, width, height, scale);
 
 #if HAVE_RSVG
 	/* SVG */
 	if (!*buffer) {
 		get_button_filename(filename, sizeof(filename), b->name,
 			active ? "-active.svg" : "-inactive.svg");
-		img_svg_load(filename, buffer, size, scale);
+		img_svg_load(filename, buffer, width, height, scale);
 	}
 #endif
 

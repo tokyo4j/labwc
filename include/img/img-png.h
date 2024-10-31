@@ -5,6 +5,6 @@
 struct lab_data_buffer;
 
 void img_png_load(const char *filename, struct lab_data_buffer **buffer,
-	int size, float scale);
+	int max_width, int max_height, float scale);
 
 #endif /* LABWC_IMG_PNG_H */

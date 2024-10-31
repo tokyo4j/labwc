@@ -15,8 +15,8 @@
 #include "labwc.h"
 
 void
-img_svg_load(const char *filename, struct lab_data_buffer **buffer, int size,
-		float scale)
+img_svg_load(const char *filename, struct lab_data_buffer **buffer,
+		int width, int height, float scale)
 {
 	if (*buffer) {
 		wlr_buffer_drop(&(*buffer)->base);
@@ -27,7 +27,7 @@ img_svg_load(const char *filename, struct lab_data_buffer **buffer, int size,
 	}
 
 	GError *err = NULL;
-	RsvgRectangle viewport = { .width = size, .height = size };
+	RsvgRectangle viewport = { .width = width, .height = height };
 	RsvgHandle *svg = rsvg_handle_new_from_file(filename, &err);
 	if (err) {
 		wlr_log(WLR_DEBUG, "error reading svg %s-%s", filename, err->message);
@@ -39,7 +39,7 @@ img_svg_load(const char *filename, struct lab_data_buffer **buffer, int size,
 		return;
 	}
 
-	*buffer = buffer_create_cairo(size, size, scale);
+	*buffer = buffer_create_cairo(width, height, scale);
 	cairo_surface_t *image = (*buffer)->surface;
 	cairo_t *cr = (*buffer)->cairo;
 

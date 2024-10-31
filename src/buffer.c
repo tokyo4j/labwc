@@ -137,7 +137,7 @@ buffer_create_cairo(uint32_t logical_width, uint32_t logical_height, float scale
 
 struct lab_data_buffer *
 buffer_convert_cairo_surface_for_icon(cairo_surface_t *surface,
-		uint32_t icon_size, float scale)
+		uint32_t max_width, uint32_t max_height, float scale)
 {
 	assert(cairo_surface_get_type(surface) == CAIRO_SURFACE_TYPE_IMAGE);
 
@@ -155,7 +155,7 @@ buffer_convert_cairo_surface_for_icon(cairo_surface_t *surface,
 	int width = cairo_image_surface_get_width(surface);
 	int height = cairo_image_surface_get_height(surface);
 	struct wlr_box logical =
-		box_fit_within(width, height, icon_size, icon_size);
+		box_fit_within(width, height, max_width, max_height);
 	struct lab_data_buffer *buffer;
 
 	if (cairo_image_surface_get_format(surface) == CAIRO_FORMAT_ARGB32

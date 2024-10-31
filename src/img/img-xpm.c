@@ -398,8 +398,8 @@ out:
 }
 
 void
-img_xpm_load(const char *filename, struct lab_data_buffer **buffer, int size,
-		float scale)
+img_xpm_load(const char *filename, struct lab_data_buffer **buffer,
+		int max_width, int max_height, float scale)
 {
 	if (*buffer) {
 		wlr_buffer_drop(&(*buffer)->base);
@@ -415,8 +415,8 @@ img_xpm_load(const char *filename, struct lab_data_buffer **buffer, int size,
 
 	cairo_surface_t *surface = xpm_load_to_surface(&h);
 	if (surface) {
-		*buffer = buffer_convert_cairo_surface_for_icon(surface, size,
-			scale);
+		*buffer = buffer_convert_cairo_surface_for_icon(surface,
+			max_width, max_height, scale);
 	} else {
 		wlr_log(WLR_ERROR, "error loading '%s'", filename);
 	}
