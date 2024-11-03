@@ -287,6 +287,14 @@ load_button(struct theme *theme, struct button *b, int active)
 		img_xbm_from_bitmap(b->fallback_button, buffer, rgba);
 	}
 
+	if (b->type == LAB_SSD_BUTTON_WINDOW_MENU && active) {
+		if (b->state_set == 0) {
+			wlr_log(WLR_ERROR, "normal");
+		} else if (b->state_set == LAB_BS_HOVERD) {
+			wlr_log(WLR_ERROR, "hover");
+		}
+	}
+
 	/*
 	 * If hover-icons do not exist, add fallbacks by copying the non-hover
 	 * variant and then adding an overlay.
@@ -468,6 +476,13 @@ load_buttons(struct theme *theme)
 		load_button(theme, b, THEME_INACTIVE);
 		load_button(theme, b, THEME_ACTIVE);
 	}
+
+	cairo_surface_write_to_png(theme->window[THEME_ACTIVE]
+		.buttons[LAB_SSD_BUTTON_ICONIFY][0]->surface,
+		"iconify-active.png");
+	cairo_surface_write_to_png(theme->window[THEME_ACTIVE]
+		.buttons[LAB_SSD_BUTTON_ICONIFY][LAB_BS_HOVERD]->surface,
+		"iconify-active-hover.png");
 }
 
 static int

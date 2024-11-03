@@ -128,6 +128,14 @@ add_scene_button(struct wl_list *part_list, enum ssd_part_type type,
 		if (!buffers[state_set]) {
 			continue;
 		}
+		if (type == LAB_SSD_BUTTON_WINDOW_MENU) {
+			if (state_set == 0) {
+				wlr_log(WLR_ERROR, "adding normal button");
+			} else if (state_set == LAB_BS_HOVERD) {
+				wlr_log(WLR_ERROR, "adding hovered button");
+			}
+		}
+
 		struct lab_data_buffer *icon_buffer = buffers[state_set];
 		struct wlr_box icon_geo = get_scale_box(icon_buffer,
 			rc.theme->window_button_width, rc.theme->window_button_height);
