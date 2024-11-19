@@ -7,6 +7,7 @@
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_touch.h>
+#include <wlr/xwayland.h>
 #include <wlr/util/log.h>
 #include "common/mem.h"
 #include "input/ime.h"
@@ -17,6 +18,7 @@
 #include "input/key-state.h"
 #include "labwc.h"
 #include "view.h"
+#include "xwayland.h"
 
 static void
 input_device_destroy(struct wl_listener *listener, void *data)
@@ -705,6 +707,35 @@ seat_focus(struct seat *seat, struct wlr_surface *surface, bool is_lock_surface)
 	constrain_cursor(server, constraint);
 }
 
+/*
+ * Prevent moving keyboard focus from popup (xwayland-unmanaged) surface to
+ * another xwayland surface. This prevents Zoom from immediately closing popup.
+ */
+static bool
+skip_for_xwl_popup(struct seat *seat, struct wlr_surface *surface)
+{
+	if (!surface) {
+		return false;
+	}
+	struct wlr_surface *focused_surface =
+		seat->seat->keyboard_state.focused_surface;
+	if (!focused_surface || !focused_surface->mapped) {
+		return false;
+	}
+	struct wlr_xwayland_surface *focused_xsurface =
+		wlr_xwayland_surface_try_from_wlr_surface(focused_surface);
+	if (!focused_xsurface || !focused_xsurface->override_redirect) {
+		return false;
+	}
+	struct wlr_xwayland_surface *xsurface =
+		wlr_xwayland_surface_try_from_wlr_surface(surface);
+	if (!xsurface) {
+		return false;
+	}
+
+	return focused_xsurface->pid == xsurface->pid;
+}
+
 void
 seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 {
@@ -713,6 +744,11 @@ seat_focus_surface(struct seat *seat, struct wlr_surface *surface)
 			== ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE) {
 		return;
 	}
+
+	if (skip_for_xwl_popup(seat, surface)) {
+		return;
+	}
+
 	seat_focus(seat, surface, /*is_lock_surface*/ false);
 }
 

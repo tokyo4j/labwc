@@ -101,6 +101,7 @@ handle_unmap(struct wl_listener *listener, void *data)
 	cursor_update_focus(unmanaged->server);
 
 	if (seat->seat->keyboard_state.focused_surface == xsurface->surface) {
+		seat_focus_surface(seat, NULL);
 		focus_next_surface(unmanaged->server, xsurface);
 	}
 }
