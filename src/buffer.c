@@ -28,11 +28,14 @@
 #include <stdlib.h>
 #include <drm_fourcc.h>
 #include <wlr/interfaces/wlr_buffer.h>
+#include <wlr/util/log.h>
 #include "buffer.h"
 #include "common/box.h"
 #include "common/mem.h"
 
 static const struct wlr_buffer_impl data_buffer_impl;
+
+static size_t total_size;
 
 static struct lab_data_buffer *
 data_buffer_from_buffer(struct wlr_buffer *buffer)
@@ -45,6 +48,8 @@ static void
 data_buffer_destroy(struct wlr_buffer *wlr_buffer)
 {
 	struct lab_data_buffer *buffer = data_buffer_from_buffer(wlr_buffer);
+	total_size -= buffer->stride * buffer->base.height;
+	wlr_log(WLR_ERROR, "total_size=%ld", total_size);
 	if (buffer->cairo) {
 		cairo_destroy(buffer->cairo);
 	}
@@ -101,6 +106,9 @@ buffer_adopt_cairo_surface(cairo_surface_t *surface)
 	buffer->stride = cairo_image_surface_get_stride(buffer->surface);
 	buffer->logical_width = width;
 	buffer->logical_height = height;
+
+	total_size += buffer->stride * buffer->base.height;
+	wlr_log(WLR_ERROR, "total_size=%ld", total_size);
 
 	return buffer;
 }
@@ -198,5 +206,9 @@ buffer_create_from_data(void *pixel_data, uint32_t width, uint32_t height,
 	buffer->data = pixel_data;
 	buffer->format = DRM_FORMAT_ARGB8888;
 	buffer->stride = stride;
+
+	total_size += buffer->stride * buffer->base.height;
+	wlr_log(WLR_ERROR, "total_size=%ld", total_size);
+
 	return buffer;
 }
