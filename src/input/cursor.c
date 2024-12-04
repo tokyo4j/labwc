@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <linux/input-event-codes.h>
+#include <minitrace.h>
 #include <sys/time.h>
 #include <time.h>
 #include <wlr/types/wlr_cursor_shape_v1.h>
@@ -590,6 +591,7 @@ cursor_get_resize_edges(struct wlr_cursor *cursor, struct cursor_context *ctx)
 bool
 cursor_process_motion(struct server *server, uint32_t time, double *sx, double *sy)
 {
+	MTR_SCOPE("labwc", "cursor_process_motion");
 	/* If the mode is non-passthrough, delegate to those functions. */
 	if (server->input_mode == LAB_INPUT_STATE_MOVE) {
 		process_cursor_move(server, time);
@@ -844,6 +846,7 @@ preprocess_cursor_motion(struct seat *seat, struct wlr_pointer *pointer,
 static void
 cursor_motion(struct wl_listener *listener, void *data)
 {
+	MTR_SCOPE("labwc", "cursor_motion");
 	/*
 	 * This event is forwarded by the cursor when a pointer emits a
 	 * _relative_ pointer motion event (i.e. a delta)

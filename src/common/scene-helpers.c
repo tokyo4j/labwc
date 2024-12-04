@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <assert.h>
+#include <minitrace.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_scene.h>
 #include <wlr/util/log.h>
@@ -84,6 +85,7 @@ bool
 lab_wlr_scene_output_commit(struct wlr_scene_output *scene_output,
 		struct wlr_output_state *state)
 {
+	MTR_SCOPE("labwc", "lab_wlr_scene_output_commit");
 	assert(scene_output);
 	assert(state);
 	struct wlr_output *wlr_output = scene_output->output;

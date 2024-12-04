@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define _POSIX_C_SOURCE 200809L
+#include <minitrace.h>
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
@@ -112,6 +113,10 @@ idle_callback(void *data)
 int
 main(int argc, char *argv[])
 {
+	mtr_init("trace.json");
+	MTR_META_PROCESS_NAME("minitrace_test");
+	MTR_META_THREAD_NAME("main thread");
+
 	char *startup_cmd = NULL;
 	char *primary_client = NULL;
 	enum wlr_log_importance verbosity = WLR_ERROR;
@@ -234,6 +239,9 @@ main(int argc, char *argv[])
 	font_finish();
 
 	server_finish(&server);
+
+	mtr_flush();
+	mtr_shutdown();
 
 	return 0;
 }

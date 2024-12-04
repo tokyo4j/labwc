@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "config.h"
 #include <assert.h>
+#include <minitrace.h>
 #include "common/scene-helpers.h"
 #include "common/surface-helpers.h"
 #include "dnd.h"
@@ -270,6 +271,7 @@ get_surface_from_layer_node(struct wlr_scene_node *node)
 struct cursor_context
 get_cursor_context(struct server *server)
 {
+	MTR_SCOPE("labwc", "get_cursor_context");
 	struct cursor_context ret = {.type = LAB_SSD_NONE};
 	struct wlr_cursor *cursor = server->seat.cursor;
 

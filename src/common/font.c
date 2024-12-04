@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cairo.h>
 #include <drm_fourcc.h>
+#include <minitrace.h>
 #include <pango/pangocairo.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/util/box.h>
@@ -84,6 +85,7 @@ font_buffer_create(struct lab_data_buffer **buffer, int max_width,
 	const char *text, struct font *font, const float *color,
 	const float *bg_color, const char *arrow, double scale)
 {
+	MTR_SCOPE("labwc", "font_buffer_create");
 	/* Allow a minimum of one pixel each for text and arrow */
 	if (max_width < 2) {
 		max_width = 2;

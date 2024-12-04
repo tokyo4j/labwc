@@ -13,6 +13,7 @@ project(
 add_project_arguments(
   [
     '-DWLR_USE_UNSTABLE',
+    '-DMTR_ENABLED',
   ],
   language: 'c',
 )
@@ -92,6 +93,7 @@ sfdo_icon = dependency(
   version: '>=0.1.3',
   required: have_libsfdo,
 )
+minitrace = dependency('minitrace')
 
 if get_option('xwayland').enabled() and not wlroots_has_xwayland
 	error('no wlroots Xwayland support')
@@ -141,6 +143,7 @@ labwc_deps = [
   pixman,
   math,
   png,
+  minitrace,
 ]
 if have_rsvg
   labwc_deps += [
