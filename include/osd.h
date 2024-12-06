@@ -36,6 +36,7 @@ struct window_switcher_field {
 struct buf;
 struct view;
 struct server;
+struct output;
 enum lab_cycle_dir;
 
 /* Begin window switcher */
@@ -63,5 +64,9 @@ void osd_field_arg_from_xml_node(struct window_switcher_field *field,
 	const char *nodename, const char *content);
 bool osd_field_validate(struct window_switcher_field *field);
 void osd_field_free(struct window_switcher_field *field);
+
+/* Internal API */
+void osd_display_classic(struct output *output, struct wl_array *views);
+void osd_display_thumbnails(struct output *output, struct wl_array *views);
 
 #endif // LABWC_OSD_H
