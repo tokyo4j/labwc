@@ -310,6 +310,11 @@ get_cursor_context(struct server *server)
 			case LAB_NODE_DESC_XDG_POPUP:
 				ret.view = desc->data;
 				ret.type = ssd_get_part_type(ret.view->ssd, ret.node);
+				/* TODO: refactor */
+				if (ret.type == LAB_SSD_NONE
+						&& ret.view->type == LAB_PROMPT_VIEW) {
+					ret.type = LAB_SSD_PROMPT_CONTENT;
+				}
 				if (ret.type == LAB_SSD_CLIENT) {
 					ret.surface = lab_wlr_surface_from_node(ret.node);
 				}

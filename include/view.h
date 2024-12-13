@@ -33,6 +33,7 @@ enum view_type {
 #if HAVE_XWAYLAND
 	LAB_XWAYLAND_VIEW,
 #endif
+	LAB_PROMPT_VIEW,
 };
 
 enum ssd_preference {
@@ -318,6 +319,13 @@ struct xdg_toplevel_view {
 	struct wl_listener set_app_id;
 	struct wl_listener request_show_window_menu;
 	struct wl_listener new_popup;
+};
+
+struct prompt_view {
+	struct view base;
+	char *text;
+	struct wlr_scene_rect *background;
+	struct scaled_font_buffer *text_buffer;
 };
 
 /* All criteria is applied in AND logic */

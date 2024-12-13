@@ -366,6 +366,9 @@ bool
 view_is_focusable(struct view *view)
 {
 	assert(view);
+	if (view->type == LAB_PROMPT_VIEW) {
+		return true;
+	}
 	if (!view->surface) {
 		return false;
 	}

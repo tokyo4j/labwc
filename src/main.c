@@ -10,8 +10,11 @@
 #include "common/spawn.h"
 #include "config/session.h"
 #include "labwc.h"
+#include "prompt.h"
 #include "theme.h"
 #include "menu/menu.h"
+
+#include "common/macros.h"
 
 struct rcxml rc = { 0 };
 
@@ -223,6 +226,9 @@ main(int argc, char *argv[])
 		.startup_cmd = startup_cmd
 	};
 	wl_event_loop_add_idle(server.wl_event_loop, idle_callback, &idle_ctx);
+
+	const char *answers[] = {"Yes", "No"};
+	prompt_create(&server, "Do you want to exit?", answers, ARRAY_SIZE(answers));
 
 	wl_display_run(server.wl_display);
 
