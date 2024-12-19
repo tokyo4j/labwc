@@ -345,9 +345,6 @@ ssd_titlebar_destroy(struct ssd *ssd)
 	if (ssd->state.app_id) {
 		zfree(ssd->state.app_id);
 	}
-	if (ssd->state.icon_img) {
-		lab_img_destroy(ssd->state.icon_img);
-	}
 
 	wlr_scene_node_destroy(&ssd->titlebar.tree->node);
 	ssd->titlebar.tree = NULL;
@@ -599,25 +596,6 @@ ssd_update_window_icon(struct ssd *ssd)
 	 * already and are zero by default.
 	 */
 	int icon_padding = theme->window_button_width / 10;
-	int icon_size = MIN(theme->window_button_width - 2 * icon_padding,
-		theme->window_button_height - 2 * icon_padding);
-
-	/*
-	 * Load/render icons at the max scale of any usable output (at
-	 * this point in time). We don't want to be constantly reloading
-	 * icons as views are moved between outputs.
-	 *
-	 * TODO: currently there's no signal to reload/render icons if
-	 * outputs are reconfigured and the max scale changes.
-	 */
-	float icon_scale = output_max_scale(ssd->view->server);
-
-	struct lab_img *icon_img = desktop_entry_icon_lookup(
-		ssd->view->server, app_id, icon_size, icon_scale);
-	if (!icon_img) {
-		wlr_log(WLR_DEBUG, "icon could not be loaded for %s", app_id);
-		return;
-	}
 
 	struct ssd_sub_tree *subtree;
 	FOR_EACH_STATE(ssd, subtree) {
@@ -634,18 +612,14 @@ ssd_update_window_icon(struct ssd *ssd)
 			if (node) {
 				struct scaled_img_buffer *img_buffer =
 					scaled_img_buffer_from_node(node);
-				scaled_img_buffer_update(img_buffer, icon_img,
+				scaled_img_buffer_update(img_buffer, NULL,
+					ssd->view->server, app_id,
 					theme->window_button_width,
 					theme->window_button_height,
 					icon_padding);
 			}
 		}
 	} FOR_EACH_END
-
-	if (ssd->state.icon_img) {
-		lab_img_destroy(ssd->state.icon_img);
-	}
-	ssd->state.icon_img = icon_img;
 #endif
 }
 

@@ -5,18 +5,30 @@
 #include <wlr/types/wlr_scene.h>
 #include "buffer.h"
 #include "common/list.h"
+#include "common/macros.h"
 #include "common/mem.h"
 #include "common/scaled-img-buffer.h"
 #include "common/scaled-scene-buffer.h"
+#include "desktop-entry.h"
 #include "img/img.h"
 #include "node.h"
+
+#include <wlr/util/log.h>
 
 static struct wl_list cached_buffers = WL_LIST_INIT(&cached_buffers);
 
 static struct lab_data_buffer *
 _create_buffer(struct scaled_scene_buffer *scaled_buffer, double scale)
 {
+	wlr_log(WLR_ERROR, "rendering img");
 	struct scaled_img_buffer *self = scaled_buffer->data;
+	if (self->app_id) {
+		int size = MIN(self->width, self->height) - self->padding;
+		struct lab_img *img = desktop_entry_icon_lookup(self->server,
+			self->app_id, size, scale);
+		return lab_img_render(img, self->width, self->height,
+			self->padding, scale);
+	}
 	struct lab_data_buffer *buffer = lab_img_render(self->img,
 		self->width, self->height, self->padding, scale);
 	return buffer;
@@ -26,6 +38,7 @@ static void
 _destroy(struct scaled_scene_buffer *scaled_buffer)
 {
 	struct scaled_img_buffer *self = scaled_buffer->data;
+	free(self->app_id);
 	free(self);
 }
 
@@ -39,7 +52,8 @@ _equal(struct scaled_scene_buffer *scaled_buffer_a,
 	return a->img == b->img
 		&& a->width == b->width
 		&& a->height == b->height
-		&& a->padding == b->padding;
+		&& a->padding == b->padding
+		&& (a->app_id == b->app_id || !strcmp(a->app_id, b->app_id));
 }
 
 static struct scaled_scene_buffer_impl impl = {
@@ -71,12 +85,15 @@ scaled_img_buffer_create(struct wlr_scene_tree *parent, struct lab_img *img,
 
 void
 scaled_img_buffer_update(struct scaled_img_buffer *self, struct lab_img *img,
+	struct server *server, const char *app_id,
 	int width, int height, int padding)
 {
 	self->img = img;
 	self->width = width;
 	self->height = height;
 	self->padding = padding;
+	self->server = server;
+	self->app_id = xstrdup(app_id);
 	scaled_scene_buffer_request_update(self->scaled_buffer, width, height);
 }
 

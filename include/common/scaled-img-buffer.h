@@ -8,6 +8,7 @@ struct wlr_scene_tree;
 struct wlr_scene_node;
 struct wlr_scene_buffer;
 struct lab_img;
+struct server;
 
 struct scaled_img_buffer {
 	struct scaled_scene_buffer *scaled_buffer;
@@ -16,6 +17,8 @@ struct scaled_img_buffer {
 	int width;
 	int height;
 	int padding;
+	struct server *server;
+	char *app_id;
 };
 
 /*
@@ -29,7 +32,7 @@ struct scaled_img_buffer *scaled_img_buffer_create(struct wlr_scene_tree *parent
 
 /* Update image, width, height and padding of the scaled_img_buffer */
 void scaled_img_buffer_update(struct scaled_img_buffer *self,
-	struct lab_img *img, int width, int height, int padding);
+	struct lab_img *img, struct server *server, const char *app_id, int width, int height, int padding);
 
 /* Obtain scaled_img_buffer from wlr_scene_node */
 struct scaled_img_buffer *scaled_img_buffer_from_node(struct wlr_scene_node *node);
