@@ -13,6 +13,8 @@
 #include "common/graphic-helpers.h"
 #include "common/scene-helpers.h"
 #include "config/rcxml.h"
+#include "desktop-entry.h"
+#include "img/img.h"
 #include "labwc.h"
 #include "node.h"
 #include "osd.h"
@@ -200,7 +202,7 @@ preview_cycled_view(struct view *view)
 }
 
 static void
-render_osd(struct server *server, cairo_t *cairo, int w, int h,
+render_osd(struct server *server, cairo_t *cairo, int w, int h, float scale,
 		bool show_workspace, const char *workspace_name,
 		struct wl_array *views)
 {
@@ -278,28 +280,60 @@ render_osd(struct server *server, cairo_t *cairo, int w, int h,
 		 * |                                 |
 		 * +---------------------------------+
 		 */
-		int x = theme->osd_border_width
+
+		/* Position of field content */
+		int field_x = theme->osd_border_width
 			+ theme->osd_window_switcher_padding
 			+ theme->osd_window_switcher_item_active_border_width
 			+ theme->osd_window_switcher_item_padding_x;
+		int field_y = y
+			+ theme->osd_window_switcher_item_active_border_width
+			+ theme->osd_window_switcher_item_padding_y;
 
 		int nr_fields = wl_list_length(&rc.window_switcher.fields);
 		struct window_switcher_field *field;
 		wl_list_for_each(field, &rc.window_switcher.fields, link) {
-			buf_clear(&buf);
-			cairo_move_to(cairo, x, y
-				+ theme->osd_window_switcher_item_padding_y
-				+ theme->osd_window_switcher_item_active_border_width);
-
-			osd_field_get_content(field, &buf, *view);
-
 			int field_width = (available_width - (nr_fields + 1)
 				* theme->osd_window_switcher_item_padding_x)
 				* field->width / 100.0;
-			pango_layout_set_width(layout, field_width * PANGO_SCALE);
-			pango_layout_set_text(layout, buf.data, -1);
-			pango_cairo_show_layout(cairo, layout);
-			x += field_width + theme->osd_window_switcher_item_padding_x;
+			int field_height = theme->osd_window_switcher_item_height
+				- 2 * theme->osd_window_switcher_item_active_border_width
+				- 2 * theme->osd_window_switcher_item_padding_y;
+
+			if (field->content == LAB_FIELD_ICON) {
+				int icon_size = MIN(field_width, field_height);
+				struct lab_img *icon_img = NULL;
+				const char *app_id = view_get_string_prop(*view, "app_id");
+				if (app_id) {
+					icon_img = desktop_entry_icon_lookup(
+						server, app_id, icon_size, scale);
+				}
+				if (icon_img) {
+					struct lab_data_buffer *icon_buffer =
+						lab_img_render(icon_img,
+							icon_size, icon_size, 0, scale);
+					cairo_save(cairo);
+					cairo_set_source_surface(cairo,
+						icon_buffer->surface, field_x, field_y);
+					cairo_rectangle(cairo, field_x, field_y,
+						icon_buffer->logical_width,
+						icon_buffer->logical_height);
+					cairo_fill(cairo);
+					cairo_restore(cairo);
+					lab_img_destroy(icon_img);
+					wlr_buffer_drop(&icon_buffer->base);
+				}
+			} else {
+				buf_clear(&buf);
+				cairo_move_to(cairo, field_x, field_y);
+
+				osd_field_get_content(field, &buf, *view);
+
+				pango_layout_set_width(layout, field_width * PANGO_SCALE);
+				pango_layout_set_text(layout, buf.data, -1);
+				pango_cairo_show_layout(cairo, layout);
+			}
+			field_x += field_width + theme->osd_window_switcher_item_padding_x;
 		}
 
 		if (*view == cycle_view) {
@@ -355,7 +389,7 @@ display_osd(struct output *output, struct wl_array *views)
 
 	/* Render OSD image */
 	cairo_t *cairo = cairo_create(buffer->surface);
-	render_osd(server, cairo, w, h, show_workspace, workspace_name, views);
+	render_osd(server, cairo, w, h, scale, show_workspace, workspace_name, views);
 	cairo_destroy(cairo);
 
 	struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_create(
