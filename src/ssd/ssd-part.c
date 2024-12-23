@@ -5,6 +5,7 @@
 #include "common/box.h"
 #include "common/list.h"
 #include "common/mem.h"
+#include "common/scaled-icon-buffer.h"
 #include "common/scaled-img-buffer.h"
 #include "labwc.h"
 #include "node.h"
@@ -100,18 +101,36 @@ add_scene_button(struct wl_list *part_list, enum ssd_part_type type,
 
 	/* Icons */
 	struct wlr_scene_node *nodes[LAB_BS_ALL + 1] = {0};
-	for (uint8_t state_set = 0; state_set <= LAB_BS_ALL; state_set++) {
-		if (!imgs[state_set]) {
-			continue;
+	int button_width = rc.theme->window_button_width;
+	int button_height = rc.theme->window_button_height;
+	/*
+	 * Ensure a small amount of horizontal padding within the button
+	 * area (2px on each side with the default 26px button width).
+	 * A new theme setting could be added to configure this. Using
+	 * an existing setting (padding.width or window.button.spacing)
+	 * was considered, but these settings have distinct purposes
+	 * already and are zero by default.
+	 */
+	int icon_padding = button_width / 10;
+
+	if (type == LAB_SSD_BUTTON_WINDOW_ICON) {
+		struct scaled_icon_buffer *icon_buffer =
+			scaled_icon_buffer_create(parent, view->server, NULL,
+				button_width, button_height, icon_padding);
+		assert(icon_buffer);
+		nodes[0] = &icon_buffer->scene_buffer->node;
+	} else {
+		for (uint8_t state_set = 0; state_set <= LAB_BS_ALL; state_set++) {
+			if (!imgs[state_set]) {
+				continue;
+			}
+			struct scaled_img_buffer *img_buffer = scaled_img_buffer_create(
+				parent, imgs[state_set], button_width, button_height);
+			assert(img_buffer);
+			struct wlr_scene_node *node = &img_buffer->scene_buffer->node;
+			wlr_scene_node_set_enabled(node, false);
+			nodes[state_set] = node;
 		}
-		struct ssd_part *icon_part = add_scene_part(part_list, type);
-		struct scaled_img_buffer *img_buffer = scaled_img_buffer_create(
-			parent, imgs[state_set], rc.theme->window_button_width,
-			rc.theme->window_button_height, /* padding */ 0);
-		assert(img_buffer);
-		icon_part->node = &img_buffer->scene_buffer->node;
-		wlr_scene_node_set_enabled(icon_part->node, false);
-		nodes[state_set] = icon_part->node;
 	}
 	/* Initially show non-hover, non-toggled, unrounded variant */
 	wlr_scene_node_set_enabled(nodes[0], true);

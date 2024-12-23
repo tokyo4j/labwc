@@ -7,6 +7,7 @@
 #include "config.h"
 #include "common/mem.h"
 #include "common/scaled-font-buffer.h"
+#include "common/scaled-icon-buffer.h"
 #include "common/scaled-img-buffer.h"
 #include "common/scene-helpers.h"
 #include "common/string-helpers.h"
@@ -126,13 +127,24 @@ update_button_state(struct ssd_button *button, enum lab_button_state state,
 	} else {
 		button->state_set &= ~state;
 	}
-	/* Switch the displayed icon buffer to the new one */
+	/* Update displayed icon based on the new state */
 	for (uint8_t state_set = 0; state_set <= LAB_BS_ALL; state_set++) {
 		if (!button->nodes[state_set]) {
 			continue;
 		}
 		wlr_scene_node_set_enabled(
-			button->nodes[state_set], button->state_set == state_set);
+			button->nodes[state_set], false);
+	}
+	if (button->nodes[button->state_set]) {
+		wlr_scene_node_set_enabled(
+			button->nodes[button->state_set], true);
+	} else {
+		/*
+		 * If the node for the current state hasn't been created, fall
+		 * back to the normal icon. Currently this is the case for
+		 * rounded/hovered window icons.
+		 */
+		wlr_scene_node_set_enabled(button->nodes[0], true);
 	}
 }
 
@@ -344,9 +356,6 @@ ssd_titlebar_destroy(struct ssd *ssd)
 	}
 	if (ssd->state.app_id) {
 		zfree(ssd->state.app_id);
-	}
-	if (ssd->state.icon_img) {
-		lab_img_destroy(ssd->state.icon_img);
 	}
 
 	wlr_scene_node_destroy(&ssd->titlebar.tree->node);
@@ -588,37 +597,6 @@ ssd_update_window_icon(struct ssd *ssd)
 	free(ssd->state.app_id);
 	ssd->state.app_id = xstrdup(app_id);
 
-	struct theme *theme = ssd->view->server->theme;
-
-	/*
-	 * Ensure a small amount of horizontal padding within the button
-	 * area (2px on each side with the default 26px button width).
-	 * A new theme setting could be added to configure this. Using
-	 * an existing setting (padding.width or window.button.spacing)
-	 * was considered, but these settings have distinct purposes
-	 * already and are zero by default.
-	 */
-	int icon_padding = theme->window_button_width / 10;
-	int icon_size = MIN(theme->window_button_width - 2 * icon_padding,
-		theme->window_button_height - 2 * icon_padding);
-
-	/*
-	 * Load/render icons at the max scale of any usable output (at
-	 * this point in time). We don't want to be constantly reloading
-	 * icons as views are moved between outputs.
-	 *
-	 * TODO: currently there's no signal to reload/render icons if
-	 * outputs are reconfigured and the max scale changes.
-	 */
-	float icon_scale = output_max_scale(ssd->view->server);
-
-	struct lab_img *icon_img = desktop_entry_icon_lookup(
-		ssd->view->server, app_id, icon_size, icon_scale);
-	if (!icon_img) {
-		wlr_log(WLR_DEBUG, "icon could not be loaded for %s", app_id);
-		return;
-	}
-
 	struct ssd_sub_tree *subtree;
 	FOR_EACH_STATE(ssd, subtree) {
 		struct ssd_part *part = ssd_get_part(
@@ -627,25 +605,11 @@ ssd_update_window_icon(struct ssd *ssd)
 			break;
 		}
 
-		/* Replace all the buffers in the button with the window icon */
 		struct ssd_button *button = node_ssd_button_from_node(part->node);
-		for (uint8_t state_set = 0; state_set <= LAB_BS_ALL; state_set++) {
-			struct wlr_scene_node *node = button->nodes[state_set];
-			if (node) {
-				struct scaled_img_buffer *img_buffer =
-					scaled_img_buffer_from_node(node);
-				scaled_img_buffer_update(img_buffer, icon_img,
-					theme->window_button_width,
-					theme->window_button_height,
-					icon_padding);
-			}
-		}
+		struct scaled_icon_buffer *icon_buffer =
+			scaled_icon_buffer_from_node(button->nodes[0]);
+		scaled_icon_buffer_update_app_id(icon_buffer, app_id);
 	} FOR_EACH_END
-
-	if (ssd->state.icon_img) {
-		lab_img_destroy(ssd->state.icon_img);
-	}
-	ssd->state.icon_img = icon_img;
 #endif
 }
 
