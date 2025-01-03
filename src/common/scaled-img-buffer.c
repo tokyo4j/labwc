@@ -17,6 +17,9 @@ static struct lab_data_buffer *
 _create_buffer(struct scaled_scene_buffer *scaled_buffer, double scale)
 {
 	struct scaled_img_buffer *self = scaled_buffer->data;
+	if (!self->img) {
+		return NULL;
+	}
 	struct lab_data_buffer *buffer = lab_img_render(self->img,
 		self->width, self->height, self->padding, scale);
 	return buffer;
@@ -26,6 +29,9 @@ static void
 _destroy(struct scaled_scene_buffer *scaled_buffer)
 {
 	struct scaled_img_buffer *self = scaled_buffer->data;
+	if (self->img) {
+		wl_list_remove(&self->img_destroy.link);
+	}
 	free(self);
 }
 
@@ -48,10 +54,22 @@ static struct scaled_scene_buffer_impl impl = {
 	.equal = _equal,
 };
 
+static void
+handle_img_destroy(struct wl_listener *listener, void *data)
+{
+	struct scaled_img_buffer *self =
+		wl_container_of(listener, self, img_destroy);
+	self->img = NULL;
+	wl_list_remove(&self->img_destroy.link);
+	scaled_scene_buffer_request_update(self->scaled_buffer,
+		self->width, self->height);
+}
+
 struct scaled_img_buffer *
 scaled_img_buffer_create(struct wlr_scene_tree *parent, struct lab_img *img,
 	int width, int height, int padding)
 {
+	assert(img);
 	struct scaled_scene_buffer *scaled_buffer = scaled_scene_buffer_create(
 		parent, &impl, &cached_buffers, /* drop_buffer */ true);
 	struct scaled_img_buffer *self = znew(*self);
@@ -61,6 +79,9 @@ scaled_img_buffer_create(struct wlr_scene_tree *parent, struct lab_img *img,
 	self->width = width;
 	self->height = height;
 	self->padding = padding;
+
+	self->img_destroy.notify = handle_img_destroy;
+	wl_signal_add(&img->events.destroy, &self->img_destroy);
 
 	scaled_buffer->data = self;
 
@@ -73,6 +94,11 @@ void
 scaled_img_buffer_update(struct scaled_img_buffer *self, struct lab_img *img,
 	int width, int height, int padding)
 {
+	assert(img);
+	if (self->img) {
+		wl_list_remove(&self->img_destroy.link);
+	}
+	wl_signal_add(&img->events.destroy, &self->img_destroy);
 	self->img = img;
 	self->width = width;
 	self->height = height;

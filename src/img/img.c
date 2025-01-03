@@ -38,6 +38,7 @@ create_img(struct lab_img_cache *cache)
 	img->cache = cache;
 	cache->refcount++;
 	wl_array_init(&img->modifiers);
+	wl_signal_init(&img->events.destroy);
 	return img;
 }
 
@@ -201,6 +202,8 @@ lab_img_destroy(struct lab_img *img)
 	if (!img) {
 		return;
 	}
+
+	wl_signal_emit_mutable(&img->events.destroy, NULL);
 
 	struct lab_img_cache *cache = img->cache;
 	cache->refcount--;

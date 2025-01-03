@@ -3,6 +3,7 @@
 #define LABWC_SCALED_IMG_BUFFER_H
 
 #include <stdbool.h>
+#include <wayland-server-core.h>
 
 struct wlr_scene_tree;
 struct wlr_scene_node;
@@ -16,6 +17,8 @@ struct scaled_img_buffer {
 	int width;
 	int height;
 	int padding;
+
+	struct wl_listener img_destroy;
 };
 
 /*
