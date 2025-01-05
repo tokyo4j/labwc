@@ -87,9 +87,6 @@ struct theme {
 		struct lab_img *button_imgs
 			[LAB_SSD_BUTTON_LAST + 1][LAB_BS_ALL + 1];
 
-		struct lab_data_buffer *corner_top_left_normal;
-		struct lab_data_buffer *corner_top_right_normal;
-
 		struct lab_data_buffer *shadow_corner_top;
 		struct lab_data_buffer *shadow_corner_bottom;
 		struct lab_data_buffer *shadow_edge;

@@ -13,6 +13,7 @@ labwc_sources += files(
   'nodename.c',
   'parse-bool.c',
   'parse-double.c',
+  'scaled-corner-buffer.c',
   'scaled-font-buffer.c',
   'scaled-img-buffer.c',
   'scaled-rect-buffer.c',

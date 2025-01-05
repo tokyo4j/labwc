@@ -6,6 +6,7 @@
 #include "buffer.h"
 #include "config.h"
 #include "common/mem.h"
+#include "common/scaled-corner-buffer.h"
 #include "common/scaled-font-buffer.h"
 #include "common/scaled-img-buffer.h"
 #include "common/scene-helpers.h"
@@ -35,11 +36,12 @@ ssd_titlebar_create(struct ssd *ssd)
 	struct theme *theme = view->server->theme;
 	int width = view->current.width;
 	int corner_width = ssd_get_corner_width();
+	int corner_buffer_width = corner_width + theme->border_width;
+	int corner_buffer_height = theme->titlebar_height + theme->border_width;
 
-	float *color;
+	float *fill_color;
+	float *border_color;
 	struct wlr_scene_tree *parent;
-	struct wlr_buffer *corner_top_left;
-	struct wlr_buffer *corner_top_right;
 	int active;
 
 	ssd->titlebar.tree = wlr_scene_tree_create(ssd->tree);
@@ -50,9 +52,8 @@ ssd_titlebar_create(struct ssd *ssd)
 		parent = subtree->tree;
 		active = (subtree == &ssd->titlebar.active) ?
 			THEME_ACTIVE : THEME_INACTIVE;
-		color = theme->window[active].title_bg_color;
-		corner_top_left = &theme->window[active].corner_top_left_normal->base;
-		corner_top_right = &theme->window[active].corner_top_right_normal->base;
+		fill_color = theme->window[active].title_bg_color;
+		border_color = theme->window[active].border_color;
 		wlr_scene_node_set_enabled(&parent->node, active);
 		wlr_scene_node_set_position(&parent->node, 0, -theme->titlebar_height);
 		wl_list_init(&subtree->parts);
@@ -60,12 +61,29 @@ ssd_titlebar_create(struct ssd *ssd)
 		/* Background */
 		add_scene_rect(&subtree->parts, LAB_SSD_PART_TITLEBAR, parent,
 			width - corner_width * 2, theme->titlebar_height,
-			corner_width, 0, color);
-		add_scene_buffer(&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_LEFT, parent,
-			corner_top_left, -rc.theme->border_width, -rc.theme->border_width);
-		add_scene_buffer(&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_RIGHT, parent,
-			corner_top_right, width - corner_width,
-			-rc.theme->border_width);
+			corner_width, 0, fill_color);
+
+		struct ssd_part *left_corner_part = add_scene_part(
+			&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_LEFT);
+		struct scaled_corner_buffer *left_corner = scaled_corner_buffer_create(
+			parent, corner_buffer_width, corner_buffer_height,
+			theme->border_width, rc.corner_radius, LAB_CORNER_TOP_LEFT,
+			fill_color, border_color);
+		assert(left_corner);
+		left_corner_part->node = &left_corner->scene_buffer->node;
+		wlr_scene_node_set_position(left_corner_part->node,
+			-rc.theme->border_width, -rc.theme->border_width);
+
+		struct ssd_part *right_corner_part = add_scene_part(
+			&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_RIGHT);
+		struct scaled_corner_buffer *right_corner = scaled_corner_buffer_create(
+			parent, corner_buffer_width, corner_buffer_height,
+			theme->border_width, rc.corner_radius, LAB_CORNER_TOP_RIGHT,
+			fill_color, border_color);
+		assert(right_corner);
+		right_corner_part->node = &right_corner->scene_buffer->node;
+		wlr_scene_node_set_position(right_corner_part->node,
+			width - corner_width, -rc.theme->border_width);
 
 		/* Buttons */
 		struct title_button *b;
