@@ -15,7 +15,7 @@ struct scaled_img_buffer {
 	struct lab_img *img;
 	int width;
 	int height;
-	int padding;
+	int padding_x;
 };
 
 /*

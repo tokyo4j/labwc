@@ -18,7 +18,7 @@ _create_buffer(struct scaled_scene_buffer *scaled_buffer, double scale)
 {
 	struct scaled_img_buffer *self = scaled_buffer->data;
 	struct lab_data_buffer *buffer = lab_img_render(self->img,
-		self->width, self->height, self->padding, scale);
+		self->width, self->height, self->padding_x, scale);
 	return buffer;
 }
 
@@ -40,7 +40,7 @@ _equal(struct scaled_scene_buffer *scaled_buffer_a,
 	return lab_img_equal(a->img, b->img)
 		&& a->width == b->width
 		&& a->height == b->height
-		&& a->padding == b->padding;
+		&& a->padding_x == b->padding_x;
 }
 
 static struct scaled_scene_buffer_impl impl = {
@@ -62,7 +62,7 @@ scaled_img_buffer_create(struct wlr_scene_tree *parent, struct lab_img *img,
 	self->img = lab_img_copy(img);
 	self->width = width;
 	self->height = height;
-	self->padding = padding;
+	self->padding_x = padding;
 
 	scaled_buffer->data = self;
 
@@ -80,7 +80,7 @@ scaled_img_buffer_update(struct scaled_img_buffer *self, struct lab_img *img,
 	self->img = lab_img_copy(img);
 	self->width = width;
 	self->height = height;
-	self->padding = padding;
+	self->padding_x = padding;
 	scaled_scene_buffer_request_update(self->scaled_buffer, width, height);
 }
 
