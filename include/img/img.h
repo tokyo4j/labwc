@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <wayland-util.h>
 
+struct wlr_buffer;
+
 enum lab_img_type {
 	LAB_IMG_PNG,
 	LAB_IMG_SVG,
@@ -30,6 +32,8 @@ struct lab_img *lab_img_load(enum lab_img_type type, const char *path,
  * Example bitmap: char button[6] = { 0x3f, 0x3f, 0x21, 0x21, 0x21, 0x3f };
  */
 struct lab_img *lab_img_load_from_bitmap(const char *bitmap, float *rgba);
+
+struct lab_img *lab_img_load_from_buffer(struct wlr_buffer *wlr_buffer);
 
 typedef void (*lab_img_modifier_func_t)(cairo_t *cairo, int w, int h);
 

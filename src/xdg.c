@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
+#include <wlr/types/wlr_xdg_toplevel_icon_v1.h>
 
 #include "common/macros.h"
 #include "common/mem.h"
@@ -1014,3 +1015,35 @@ xdg_shell_init(struct server *server)
 		&server->xdg_activation_new_token);
 }
 
+
+static void
+handle_set_icon(struct wl_listener *listener, void *data)
+{
+	struct wlr_xdg_toplevel_icon_manager_v1_set_icon_event *event = data;
+	if (!event->icon) {
+		return;
+	}
+
+	struct server *server =
+		wl_container_of(listener, server, icon_manager_set_icon);
+	struct view *view = view_from_wlr_surface(event->toplevel->base->surface);
+	assert(view);
+
+	if (view->xdg_icon) {
+		wlr_xdg_toplevel_icon_v1_unref(view->xdg_icon);
+	}
+	if (event->icon) {
+		wlr_xdg_toplevel_icon_v1_ref(event->icon);
+		view->xdg_icon = event->icon;
+	}
+	ssd_update_window_icon(view->ssd);
+}
+
+void
+xdg_toplevel_icon_manager_init(struct server *server)
+{
+	server->icon_manager = wlr_xdg_toplevel_icon_manager_v1_create(
+		server->wl_display, 1);
+	server->icon_manager_set_icon.notify = handle_set_icon;
+	wl_signal_add(&server->icon_manager->events.set_icon, &server->icon_manager_set_icon);
+}

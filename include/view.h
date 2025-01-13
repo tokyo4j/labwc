@@ -164,6 +164,8 @@ struct view {
 	const struct view_impl *impl;
 	struct wl_list link;
 
+	struct wlr_xdg_toplevel_icon_v1 *xdg_icon;
+
 	/*
 	 * The primary output that the view is displayed on. Specifically:
 	 *

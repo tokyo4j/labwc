@@ -2,6 +2,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <string.h>
+#include <wlr/types/wlr_xdg_toplevel_icon_v1.h>
+#include "buffer.h"
 #include "common/macros.h"
 #include "common/mem.h"
 #include "common/scaled-icon-buffer.h"
@@ -24,19 +26,46 @@ _create_buffer(struct scaled_scene_buffer *scaled_buffer, double scale)
 	if (self->icon_name) {
 		img = desktop_entry_load_icon(self->server,
 			self->icon_name, icon_size, scale);
-	} else if (self->app_id) {
-		img = desktop_entry_load_icon_from_app_id(self->server,
-			self->app_id, icon_size, scale);
-		if (!img) {
-			img = desktop_entry_load_icon(self->server,
-				rc.fallback_app_icon_name, icon_size, scale);
+		if (img) {
+			goto found_img;
 		}
 	}
 
-	if (!img) {
-		return NULL;
+	if (self->xdg_icon) {
+		if (self->xdg_icon->name) {
+			img = desktop_entry_load_icon_from_app_id(
+				self->server, self->xdg_icon->name,
+				icon_size, scale);
+			if (img) {
+				goto found_img;
+			}
+		}
+		struct wlr_xdg_toplevel_icon_v1_buffer *icon_buffer;
+		wl_list_for_each(icon_buffer, &self->xdg_icon->buffers, link) {
+			/* TODO: choose the best buffer for the size */
+			img = lab_img_load_from_buffer(icon_buffer->buffer);
+			if (img) {
+				goto found_img;
+			}
+		}
 	}
 
+	if (self->app_id) {
+		img = desktop_entry_load_icon_from_app_id(self->server,
+			self->app_id, icon_size, scale);
+		if (img) {
+			goto found_img;
+		}
+	}
+
+	img = desktop_entry_load_icon(self->server, rc.fallback_app_icon_name,
+		icon_size, scale);
+	if (img) {
+		goto found_img;
+	}
+	return NULL;
+
+found_img:;
 	struct lab_data_buffer *buffer =
 		lab_img_render(img, self->width, self->height, scale);
 	lab_img_destroy(img);
@@ -51,6 +80,9 @@ static void
 _destroy(struct scaled_scene_buffer *scaled_buffer)
 {
 	struct scaled_icon_buffer *self = scaled_buffer->data;
+	if (self->xdg_icon) {
+		wlr_xdg_toplevel_icon_v1_unref(self->xdg_icon);
+	}
 	free(self->app_id);
 	free(self->icon_name);
 	free(self);
@@ -102,6 +134,19 @@ scaled_icon_buffer_set_app_id(struct scaled_icon_buffer *self,
 		return;
 	}
 	xstrdup_replace(self->app_id, app_id);
+	scaled_scene_buffer_request_update(self->scaled_buffer, self->width, self->height);
+}
+
+void
+scaled_icon_buffer_set_xdg_icon(struct scaled_icon_buffer *self,
+	struct wlr_xdg_toplevel_icon_v1 *xdg_icon)
+{
+	assert(xdg_icon);
+	if (self->xdg_icon) {
+		wlr_xdg_toplevel_icon_v1_unref(self->xdg_icon);
+	}
+	wlr_xdg_toplevel_icon_v1_ref(xdg_icon);
+	self->xdg_icon = xdg_icon;
 	scaled_scene_buffer_request_update(self->scaled_buffer, self->width, self->height);
 }
 

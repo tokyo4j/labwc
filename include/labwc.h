@@ -262,6 +262,9 @@ struct server {
 	struct wl_listener xdg_activation_request;
 	struct wl_listener xdg_activation_new_token;
 
+	struct wlr_xdg_toplevel_icon_manager_v1 *icon_manager;
+	struct wl_listener icon_manager_set_icon;
+
 	struct wl_list views;
 	struct wl_list unmanaged_surfaces;
 
@@ -435,6 +438,7 @@ struct constraint {
 
 void xdg_popup_create(struct view *view, struct wlr_xdg_popup *wlr_popup);
 void xdg_shell_init(struct server *server);
+void xdg_toplevel_icon_manager_init(struct server *server);
 
 /*
  * desktop.c routines deal with a collection of views

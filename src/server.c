@@ -632,6 +632,7 @@ server_init(struct server *server)
 		server->wl_display);
 	seat_init(server);
 	xdg_shell_init(server);
+	xdg_toplevel_icon_manager_init(server);
 	kde_server_decoration_init(server);
 	xdg_server_decoration_init(server);
 

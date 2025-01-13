@@ -578,9 +578,6 @@ ssd_update_window_icon(struct ssd *ssd)
 	if (string_null_or_empty(app_id)) {
 		return;
 	}
-	if (ssd->state.app_id && !strcmp(ssd->state.app_id, app_id)) {
-		return;
-	}
 
 	free(ssd->state.app_id);
 	ssd->state.app_id = xstrdup(app_id);
@@ -596,6 +593,9 @@ ssd_update_window_icon(struct ssd *ssd)
 		struct ssd_button *button = node_ssd_button_from_node(part->node);
 		assert(button->window_icon);
 		scaled_icon_buffer_set_app_id(button->window_icon, app_id);
+		if (ssd->view->xdg_icon) {
+			scaled_icon_buffer_set_xdg_icon(button->window_icon, ssd->view->xdg_icon);
+		}
 	} FOR_EACH_END
 #endif
 }

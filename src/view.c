@@ -4,6 +4,7 @@
 #include <strings.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_security_context_v1.h>
+#include <wlr/types/wlr_xdg_toplevel_icon_v1.h>
 #include "common/box.h"
 #include "common/macros.h"
 #include "common/match.h"
@@ -2548,6 +2549,10 @@ view_destroy(struct view *view)
 	if (view->inhibits_keybinds) {
 		view->inhibits_keybinds = false;
 		server->seat.nr_inhibited_keybind_views--;
+	}
+
+	if (view->xdg_icon) {
+		wlr_xdg_toplevel_icon_v1_unref(view->xdg_icon);
 	}
 
 	osd_on_view_destroy(view);

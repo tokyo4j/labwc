@@ -7,12 +7,14 @@
 struct wlr_scene_tree;
 struct wlr_scene_node;
 struct wlr_scene_buffer;
+struct wlr_xdg_toplevel_icon_v1;
 
 struct scaled_icon_buffer {
 	struct scaled_scene_buffer *scaled_buffer;
 	struct wlr_scene_buffer *scene_buffer;
 	struct server *server;
 	char *app_id;
+	struct wlr_xdg_toplevel_icon_v1 *xdg_icon;
 	char *icon_name;
 	int width;
 	int height;
@@ -30,6 +32,9 @@ struct scaled_icon_buffer *scaled_icon_buffer_create(
 
 void scaled_icon_buffer_set_app_id(struct scaled_icon_buffer *self,
 	const char *app_id);
+
+void scaled_icon_buffer_set_xdg_icon(struct scaled_icon_buffer *self,
+	struct wlr_xdg_toplevel_icon_v1 *xdg_icon);
 
 void scaled_icon_buffer_set_icon_name(struct scaled_icon_buffer *self,
 	const char *icon_name);
