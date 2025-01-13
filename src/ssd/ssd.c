@@ -8,9 +8,11 @@
 
 #include <assert.h>
 #include <strings.h>
+#include "common/macros.h"
 #include "common/mem.h"
 #include "common/scene-helpers.h"
 #include "labwc.h"
+#include "node.h"
 #include "ssd-internal.h"
 #include "theme.h"
 #include "view.h"
@@ -86,49 +88,21 @@ ssd_get_part_type(const struct ssd *ssd, struct wlr_scene_node *node)
 		return LAB_SSD_NONE;
 	}
 
-	const struct wl_list *part_list = NULL;
-	struct wlr_scene_tree *grandparent =
-		node->parent ? node->parent->node.parent : NULL;
-	struct wlr_scene_tree *greatgrandparent =
-		grandparent ? grandparent->node.parent : NULL;
-
-	/* active titlebar */
-	if (node->parent == ssd->titlebar.active.tree) {
-		part_list = &ssd->titlebar.active.parts;
-	} else if (grandparent == ssd->titlebar.active.tree) {
-		part_list = &ssd->titlebar.active.parts;
-	} else if (greatgrandparent == ssd->titlebar.active.tree) {
-		part_list = &ssd->titlebar.active.parts;
-
-	/* extents */
-	} else if (node->parent == ssd->extents.tree) {
-		part_list = &ssd->extents.parts;
-
-	/* active border */
-	} else if (node->parent == ssd->border.active.tree) {
-		part_list = &ssd->border.active.parts;
-
-	/* inactive titlebar */
-	} else if (node->parent == ssd->titlebar.inactive.tree) {
-		part_list = &ssd->titlebar.inactive.parts;
-	} else if (grandparent == ssd->titlebar.inactive.tree) {
-		part_list = &ssd->titlebar.inactive.parts;
-	} else if (greatgrandparent == ssd->titlebar.inactive.tree) {
-		part_list = &ssd->titlebar.inactive.parts;
-
-	/* inactive border */
-	} else if (node->parent == ssd->border.inactive.tree) {
-		part_list = &ssd->border.inactive.parts;
-	}
-
-	if (part_list) {
-		struct ssd_part *part;
-		wl_list_for_each(part, part_list, link) {
-			if (node == part->node) {
-				return part->type;
+	while (node != &ssd->tree->node && node) {
+		struct node_descriptor *desc = node->data;
+		if (desc) {
+			if (desc->type == LAB_NODE_DESC_SSD_BUTTON) {
+				struct ssd_button *button = desc->data;
+				return button->type;
+			} else if (desc->type == LAB_NODE_DESC_SSD_OTHER) {
+				enum ssd_part_type type =
+					(enum ssd_part_type)(uintptr_t)desc->data;
+				return type;
 			}
 		}
+		node = &node->parent->node;
 	}
+
 	return LAB_SSD_NONE;
 }
 
@@ -364,22 +338,21 @@ ssd_mode_parse(const char *mode)
 }
 
 void
-ssd_set_active(struct ssd *ssd, bool active)
+ssd_set_active(struct ssd *ssd, bool is_active)
 {
 	if (!ssd) {
 		return;
 	}
-	wlr_scene_node_set_enabled(&ssd->border.active.tree->node, active);
-	wlr_scene_node_set_enabled(&ssd->titlebar.active.tree->node, active);
-	if (ssd->shadow.active.tree) {
-		wlr_scene_node_set_enabled(
-			&ssd->shadow.active.tree->node, active);
-	}
-	wlr_scene_node_set_enabled(&ssd->border.inactive.tree->node, !active);
-	wlr_scene_node_set_enabled(&ssd->titlebar.inactive.tree->node, !active);
-	if (ssd->shadow.inactive.tree) {
-		wlr_scene_node_set_enabled(
-			&ssd->shadow.inactive.tree->node, !active);
+
+	for (int active = THEME_INACTIVE; active <= THEME_ACTIVE; active++) {
+		wlr_scene_node_set_enabled(&ssd->border.subtrees[active].tree->node,
+			(bool)active == is_active);
+		wlr_scene_node_set_enabled(&ssd->titlebar.subtrees[active].tree->node,
+			(bool)active == is_active);
+		if (ssd->shadow.subtrees[active].tree) {
+			wlr_scene_node_set_enabled(&ssd->shadow.subtrees[active].tree->node,
+				(bool)active == is_active);
+		}
 	}
 }
 
@@ -406,9 +379,7 @@ ssd_enable_keybind_inhibit_indicator(struct ssd *ssd, bool enable)
 		? rc.theme->window_toggled_keybinds_color
 		: rc.theme->window[THEME_ACTIVE].border_color;
 
-	struct ssd_part *part = ssd_get_part(&ssd->border.active.parts, LAB_SSD_PART_TOP);
-	struct wlr_scene_rect *rect = wlr_scene_rect_from_node(part->node);
-	wlr_scene_rect_set_color(rect, color);
+	wlr_scene_rect_set_color(ssd->border.subtrees[THEME_ACTIVE].top, color);
 }
 
 struct ssd_hover_state *
@@ -447,20 +418,20 @@ ssd_debug_get_node_name(const struct ssd *ssd, struct wlr_scene_node *node)
 	if (node == &ssd->tree->node) {
 		return "view->ssd";
 	}
-	if (node == &ssd->titlebar.active.tree->node) {
-		return "titlebar.active";
+	if (node == &ssd->titlebar.tree->node) {
+		return "titlebar";
 	}
-	if (node == &ssd->titlebar.inactive.tree->node) {
-		return "titlebar.inactive";
-	}
-	if (node == &ssd->border.active.tree->node) {
-		return "border.active";
-	}
-	if (node == &ssd->border.inactive.tree->node) {
-		return "border.inactive";
+	if (node == &ssd->border.tree->node) {
+		return "border";
 	}
 	if (node == &ssd->extents.tree->node) {
 		return "extents";
 	}
 	return NULL;
+}
+
+void ssd_node_descriptor_create(struct wlr_scene_node *node,
+		enum ssd_part_type type)
+{
+	node_descriptor_create(node, LAB_NODE_DESC_SSD_OTHER, (void *)type);
 }

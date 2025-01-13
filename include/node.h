@@ -22,6 +22,7 @@ enum node_descriptor_type {
 	LAB_NODE_DESC_TREE,
 	LAB_NODE_DESC_SCALED_SCENE_BUFFER,
 	LAB_NODE_DESC_SSD_BUTTON,
+	LAB_NODE_DESC_SSD_OTHER,
 };
 
 struct node_descriptor {
