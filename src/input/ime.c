@@ -61,6 +61,7 @@ input_method_keyboard_grab_forward_modifiers(struct keyboard *keyboard)
 	if (keyboard_grab) {
 		wlr_input_method_keyboard_grab_v2_set_keyboard(keyboard_grab,
 			keyboard->wlr_keyboard);
+		wlr_log(WLR_ERROR, "- forwarding modifiers %d %s", keyboard->wlr_keyboard->modifiers.depressed, keyboard->wlr_keyboard->base.name);
 		wlr_input_method_keyboard_grab_v2_send_modifiers(keyboard_grab,
 			&keyboard->wlr_keyboard->modifiers);
 		return true;
@@ -93,6 +94,7 @@ input_method_keyboard_grab_forward_key(struct keyboard *keyboard,
 			}
 			lab_set_remove(pressed_keys, event->keycode);
 		}
+		wlr_log(WLR_ERROR, "- forwarding key %d %s", event->keycode, keyboard->wlr_keyboard->base.name);
 		wlr_input_method_keyboard_grab_v2_send_key(keyboard_grab,
 			event->time_msec, event->keycode, event->state);
 		return true;
