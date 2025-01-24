@@ -31,6 +31,19 @@ input_device_destroy(struct wl_listener *listener, void *data)
 		wl_list_remove(&keyboard->key.link);
 		wl_list_remove(&keyboard->modifier.link);
 		keyboard_cancel_keybind_repeat(keyboard);
+		/*
+		 * If the active keyboard on the seat is destroyed, fall back
+		 * to the keyboard from keyboard group so we can respond to
+		 * wl_seat.get_keyboard requests with wl_keyboard.keymap event.
+		 * This prevents Chromium from crashing when started just after
+		 * the active keyboard is destroyed.
+		 */
+		struct wlr_keyboard *active_keyboard =
+			wlr_seat_get_keyboard(input->seat->seat);
+		if (!active_keyboard || active_keyboard == keyboard->wlr_keyboard) {
+			wlr_seat_set_keyboard(input->seat->seat,
+				&input->seat->keyboard_group->keyboard);
+		}
 	}
 	free(input);
 }
@@ -694,15 +707,6 @@ seat_focus(struct seat *seat, struct wlr_surface *surface,
 		wlr_seat_keyboard_notify_clear_focus(seat->seat);
 		input_method_relay_set_focus(seat->input_method_relay, NULL);
 		return;
-	}
-
-	if (!wlr_seat_get_keyboard(seat->seat)) {
-		/*
-		 * wlr_seat_keyboard_notify_enter() sends wl_keyboard.modifiers,
-		 * but it may crash some apps (e.g. Chromium) if
-		 * wl_keyboard.keymap is not sent beforehand.
-		 */
-		wlr_seat_set_keyboard(seat->seat, &seat->keyboard_group->keyboard);
 	}
 
 	/*
