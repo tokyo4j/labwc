@@ -466,7 +466,14 @@ new_keyboard(struct seat *seat, struct wlr_input_device *device, bool is_virtual
 
 	keyboard_setup_handlers(keyboard);
 
-	wlr_seat_set_keyboard(seat->wlr_seat, kb);
+	/*
+	 * Set the keyboard on the seat if it hasn't been set. This is
+	 * important to prevent Fcitx5 from grabbing the virtual keyboard
+	 * created by Fcitx5 itself.
+	 */
+	if (!wlr_seat_get_keyboard(seat->wlr_seat)) {
+		wlr_seat_set_keyboard(seat->wlr_seat, kb);
+	}
 
 	return (struct input *)keyboard;
 }
