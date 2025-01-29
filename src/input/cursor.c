@@ -1083,6 +1083,8 @@ cursor_process_button_press(struct seat *seat, uint32_t button, uint32_t time_ms
 	return false;
 }
 
+static bool dont_exit_interactive_on_next_release = true;
+
 bool
 cursor_process_button_release(struct seat *seat, uint32_t button,
 		uint32_t time_msec)
@@ -1100,6 +1102,12 @@ cursor_process_button_release(struct seat *seat, uint32_t button,
 		/* TODO: take into account overflow of time_msec */
 		if (time_msec - press_msec > rc.menu_ignore_button_release_period) {
 			if (ctx.type == LAB_SSD_MENU) {
+				/*
+				 * Prevent interactive move/resize from being
+				 * immediately cancelled when Move/Resize
+				 * action is executed from menu items
+				 */
+				dont_exit_interactive_on_next_release = true;
 				menu_call_selected_actions(server);
 			} else {
 				menu_close_root(server);
@@ -1140,6 +1148,11 @@ cursor_finish_button_release(struct seat *seat, uint32_t button)
 	}
 
 	lab_set_remove(&seat->bound_buttons, button);
+
+	if (dont_exit_interactive_on_next_release) {
+		dont_exit_interactive_on_next_release = false;
+		return false;
+	}
 
 	if (server->input_mode == LAB_INPUT_STATE_MOVE
 			|| server->input_mode == LAB_INPUT_STATE_RESIZE) {
