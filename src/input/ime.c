@@ -73,27 +73,43 @@ bool
 input_method_keyboard_grab_forward_key(struct keyboard *keyboard,
 		struct wlr_keyboard_key_event *event)
 {
-	/*
-	 * We should not forward key-release events without corresponding
-	 * key-press events forwarded
-	 */
 	struct lab_set *pressed_keys =
 		&keyboard->base.seat->input_method_relay->forwarded_pressed_keys;
-	if (event->state == WL_KEYBOARD_KEY_STATE_RELEASED
-			&& !lab_set_contains(pressed_keys, event->keycode)) {
-		return false;
-	}
-
 	struct wlr_input_method_keyboard_grab_v2 *keyboard_grab =
 		get_keyboard_grab(keyboard);
 	if (keyboard_grab) {
+		/*
+		 * This must come before the early-return below to prevent
+		 * stuck Ctrl modifier in Firefox after opening input box with
+		 * Ctrl+F which activates a text-input. Otherwise here's what
+		 * happens:
+		 * - When releasing F key, the modifier state is never notified
+		 *   to the input-method.
+		 * - When releasing Ctrl, the empty modifier state is notified
+		 *   to the input-method.
+		 * - The input-method sends the empty modifier state back, but
+		 *   wlroots never notifies it to us because the modifier state
+		 *   on the virtual keyboard has already been empty.
+		 */
+		wlr_input_method_keyboard_grab_v2_set_keyboard(keyboard_grab,
+			keyboard->wlr_keyboard);
+
 		if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 			lab_set_add(pressed_keys, event->keycode);
 		} else {
+			/*
+			 * Don't forward key-release events without
+			 * corresponding key-press events forwarded, because
+			 * wlroots (as of commit 86eaa44) ignores a key-release
+			 * event on the virtual keyboard if the corresponding
+			 * key has not been pressed, which causes stuck F key
+			 * when pressing Ctrl-F in Firefox.
+			 */
+			if (!lab_set_contains(pressed_keys, event->keycode)) {
+				return false;
+			}
 			lab_set_remove(pressed_keys, event->keycode);
 		}
-		wlr_input_method_keyboard_grab_v2_set_keyboard(keyboard_grab,
-			keyboard->wlr_keyboard);
 		wlr_input_method_keyboard_grab_v2_send_key(keyboard_grab,
 			event->time_msec, event->keycode, event->state);
 		return true;
