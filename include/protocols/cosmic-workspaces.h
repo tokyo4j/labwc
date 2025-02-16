@@ -23,6 +23,7 @@ struct lab_cosmic_workspace_manager {
 
 struct lab_cosmic_workspace_group {
 	struct lab_cosmic_workspace_manager *manager;
+	struct output_tracker *output_tracker;
 	struct wl_list workspaces;
 	struct wl_array capabilities;
 	struct {

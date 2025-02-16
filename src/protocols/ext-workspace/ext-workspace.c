@@ -291,7 +291,7 @@ group_send_state(struct lab_ext_workspace_group *group, struct wl_resource *reso
 	ext_workspace_group_handle_v1_send_capabilities(
 		resource, group->capabilities);
 
-	output_tracker_send_initial_state_to_resource(group, resource);
+	output_tracker_send_initial_state_to_resource(group->output_tracker, resource);
 }
 
 /* Manager itself */
@@ -567,6 +567,9 @@ lab_ext_workspace_group_create(struct lab_ext_workspace_manager *manager)
 	wl_signal_init(&group->events.create_workspace);
 	wl_signal_init(&group->events.destroy);
 
+	group->output_tracker = output_tracker_create(group,
+		&group->resources, &output_tracker_impl);
+
 	wl_list_append(&manager->groups, &group->link);
 
 	struct wl_resource *resource, *tmp;
@@ -587,14 +590,14 @@ void
 lab_ext_workspace_group_output_enter(struct lab_ext_workspace_group *group,
 		struct wlr_output *wlr_output)
 {
-	output_tracker_enter(group, &group->resources, wlr_output, &output_tracker_impl);
+	output_tracker_enter(group->output_tracker, wlr_output);
 }
 
 void
 lab_ext_workspace_group_output_leave(struct lab_ext_workspace_group *group,
 		struct wlr_output *wlr_output)
 {
-	output_tracker_leave(group, wlr_output);
+	output_tracker_leave(group->output_tracker, wlr_output);
 }
 
 void
@@ -604,7 +607,7 @@ lab_ext_workspace_group_destroy(struct lab_ext_workspace_group *group)
 	wl_signal_emit_mutable(&group->events.destroy, NULL);
 
 	/* Ensure output leave events are sent and tracker resources are destroyed */
-	output_tracker_destroy(group);
+	output_tracker_destroy(group->output_tracker);
 
 	struct lab_ext_workspace *workspace;
 	wl_list_for_each(workspace, &group->manager->workspaces, link) {

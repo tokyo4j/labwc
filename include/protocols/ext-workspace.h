@@ -24,6 +24,7 @@ struct lab_ext_workspace_manager {
 
 struct lab_ext_workspace_group {
 	struct lab_ext_workspace_manager *manager;
+	struct output_tracker *output_tracker;
 	uint32_t capabilities;
 	struct {
 		struct wl_signal create_workspace;
