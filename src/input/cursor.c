@@ -573,6 +573,14 @@ cursor_get_resize_edges(struct wlr_cursor *cursor, struct cursor_context *ctx)
 	return resize_edges;
 }
 
+static bool
+should_ignore_mousebind(struct cursor_context *ctx, struct mousebind *mousebind)
+{
+	return ctx->type == LAB_SSD_CLIENT && ctx->view
+		&& ctx->view->inhibits_keybinds
+		&& !actions_contain_toggle_keybinds(&mousebind->actions);
+}
+
 bool
 cursor_process_motion(struct server *server, uint32_t time, double *sx, double *sy)
 {
@@ -610,6 +618,9 @@ cursor_process_motion(struct server *server, uint32_t time, double *sx, double *
 	wl_list_for_each(mousebind, &rc.mousebinds, link) {
 		if (mousebind->mouse_event == MOUSE_ACTION_DRAG
 				&& mousebind->pressed_in_context) {
+			if (should_ignore_mousebind(&seat->pressed, mousebind)) {
+				continue;
+			}
 			/*
 			 * Use view and resize edges from the press
 			 * event (not the motion event) to prevent
@@ -906,6 +917,9 @@ handle_release_mousebinding(struct server *server,
 		if (ssd_part_contains(mousebind->context, ctx->type)
 				&& mousebind->button == button
 				&& modifiers == mousebind->modifiers) {
+			if (should_ignore_mousebind(ctx, mousebind)) {
+				continue;
+			}
 			switch (mousebind->mouse_event) {
 			case MOUSE_ACTION_RELEASE:
 				break;
@@ -973,6 +987,9 @@ handle_press_mousebinding(struct server *server, struct cursor_context *ctx,
 		if (ssd_part_contains(mousebind->context, ctx->type)
 				&& mousebind->button == button
 				&& modifiers == mousebind->modifiers) {
+			if (should_ignore_mousebind(ctx, mousebind)) {
+				continue;
+			}
 			switch (mousebind->mouse_event) {
 			case MOUSE_ACTION_DRAG: /* fallthrough */
 			case MOUSE_ACTION_CLICK:
