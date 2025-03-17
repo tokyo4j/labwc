@@ -1,3 +1,5 @@
+
+
 // SPDX-License-Identifier: GPL-2.0-only
 /* Based on Sway (https://github.com/swaywm/sway) */
 
@@ -73,27 +75,28 @@ bool
 input_method_keyboard_grab_forward_key(struct keyboard *keyboard,
 		struct wlr_keyboard_key_event *event)
 {
-	/*
-	 * We should not forward key-release events without corresponding
-	 * key-press events forwarded
-	 */
-	struct lab_set *pressed_keys =
-		&keyboard->base.seat->input_method_relay->forwarded_pressed_keys;
-	if (event->state == WL_KEYBOARD_KEY_STATE_RELEASED
-			&& !lab_set_contains(pressed_keys, event->keycode)) {
-		return false;
-	}
-
 	struct wlr_input_method_keyboard_grab_v2 *keyboard_grab =
 		get_keyboard_grab(keyboard);
+
 	if (keyboard_grab) {
+		wlr_input_method_keyboard_grab_v2_set_keyboard(keyboard_grab,
+			keyboard->wlr_keyboard);
+
+		struct lab_set *pressed_keys =
+			&keyboard->base.seat->input_method_relay->forwarded_pressed_keys;
 		if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 			lab_set_add(pressed_keys, event->keycode);
 		} else {
+			/*
+			 * We should not forward key-release events without
+			 * corresponding key-press events forwarded
+			 */
+			if (!lab_set_contains(pressed_keys, event->keycode)) {
+				return false;
+			}
 			lab_set_remove(pressed_keys, event->keycode);
 		}
-		wlr_input_method_keyboard_grab_v2_set_keyboard(keyboard_grab,
-			keyboard->wlr_keyboard);
+
 		wlr_input_method_keyboard_grab_v2_send_key(keyboard_grab,
 			event->time_msec, event->keycode, event->state);
 		return true;
