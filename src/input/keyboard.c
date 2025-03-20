@@ -141,6 +141,10 @@ keyboard_modifiers_notify(struct wl_listener *listener, void *data)
 	struct server *server = seat->server;
 	struct wlr_keyboard *wlr_keyboard = keyboard->wlr_keyboard;
 
+	wlr_log(WLR_ERROR, "received modifier %d from %s",
+		wlr_keyboard->modifiers.depressed,
+		keyboard->wlr_keyboard->base.name);
+
 	if (server->input_mode == LAB_INPUT_STATE_MOVE) {
 		/* Any change to the modifier state re-enable region snap */
 		seat->region_prevent_snap = false;
@@ -168,6 +172,7 @@ keyboard_modifiers_notify(struct wl_listener *listener, void *data)
 
 	if (!input_method_keyboard_grab_forward_modifiers(keyboard)) {
 		/* Send modifiers to focused client */
+		wlr_log(WLR_ERROR, "notifying modifier");
 		wlr_seat_keyboard_notify_modifiers(seat->seat,
 			&wlr_keyboard->modifiers);
 
@@ -637,6 +642,9 @@ keyboard_key_notify(struct wl_listener *listener, void *data)
 	struct wlr_seat *wlr_seat = seat->seat;
 	idle_manager_notify_activity(seat->seat);
 
+	wlr_log(WLR_ERROR, "received keycode %d,%d from %s", event->keycode, event->state,
+		keyboard->wlr_keyboard->base.name);
+
 	/* any new press/release cancels current keybind repeat */
 	keyboard_cancel_keybind_repeat(keyboard);
 
@@ -658,6 +666,7 @@ keyboard_key_notify(struct wl_listener *listener, void *data)
 			start_keybind_repeat(seat->server, keyboard, event);
 		}
 	} else if (!input_method_keyboard_grab_forward_key(keyboard, event)) {
+		wlr_log(WLR_ERROR, "notifying key");
 		wlr_seat_set_keyboard(wlr_seat, keyboard->wlr_keyboard);
 		wlr_seat_keyboard_notify_key(wlr_seat, event->time_msec,
 			event->keycode, event->state);

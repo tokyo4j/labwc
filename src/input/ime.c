@@ -330,12 +330,14 @@ input_method_keyboard_grab_forward_modifiers(struct keyboard *keyboard)
 	struct wlr_input_method_keyboard_grab_v2 *keyboard_grab =
 		get_keyboard_grab(keyboard);
 	if (keyboard_grab) {
+		wlr_log(WLR_ERROR, "forwarding modifier");
 		wlr_input_method_keyboard_grab_v2_set_keyboard(keyboard_grab,
 			keyboard->wlr_keyboard);
 		wlr_input_method_keyboard_grab_v2_send_modifiers(keyboard_grab,
 			&keyboard->wlr_keyboard->modifiers);
 		return true;
 	} else {
+		wlr_log(WLR_ERROR, "not forwarding modifier since there's no grab");
 		return false;
 	}
 }
@@ -377,14 +379,18 @@ input_method_keyboard_grab_forward_key(struct keyboard *keyboard,
 			 * when pressing Ctrl-F in Firefox.
 			 */
 			if (!lab_set_contains(pressed_keys, event->keycode)) {
+				wlr_log(WLR_ERROR, "not forwarding key release "
+					"since it hasn't been forwarded");
 				return false;
 			}
 			lab_set_remove(pressed_keys, event->keycode);
 		}
+		wlr_log(WLR_ERROR, "forwarding key");
 		wlr_input_method_keyboard_grab_v2_send_key(keyboard_grab,
 			event->time_msec, event->keycode, event->state);
 		return true;
 	} else {
+		wlr_log(WLR_ERROR, "not forwarding key since there's no grab");
 		return false;
 	}
 }
@@ -696,6 +702,8 @@ handle_input_method_grab_keyboard(struct wl_listener *listener, void *data)
 	}
 
 	relay->forwarded_pressed_keys = (struct lab_set){0};
+
+	wlr_log(WLR_ERROR, "resetting forwarded keys");
 
 	relay->keyboard_grab_destroy.notify = handle_keyboard_grab_destroy;
 	wl_signal_add(&keyboard_grab->events.destroy,
