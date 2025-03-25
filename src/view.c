@@ -4,6 +4,7 @@
 #include <strings.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_security_context_v1.h>
+#include "common/array.h"
 #include "common/box.h"
 #include "common/macros.h"
 #include "common/match.h"
@@ -1561,16 +1562,42 @@ view_is_always_on_top(struct view *view)
 }
 
 void
-view_toggle_always_on_top(struct view *view)
+view_set_always_on_top(struct view *view, bool enable)
 {
 	assert(view);
-	if (view_is_always_on_top(view)) {
-		view->workspace = view->server->workspaces.current;
-		wlr_scene_node_reparent(&view->scene_tree->node,
-			view->workspace->tree);
+
+	struct view *root = view_get_root(view);
+	struct wl_array subviews;
+	struct view **subview;
+
+	wl_array_init(&subviews);
+	array_add(&subviews, root);
+	view_append_children(root, &subviews);
+
+	if (enable) {
+		wl_array_for_each(subview, &subviews) {
+			wlr_scene_node_reparent(&(*subview)->scene_tree->node,
+				view->server->view_tree_always_on_top);
+		}
 	} else {
-		wlr_scene_node_reparent(&view->scene_tree->node,
-			view->server->view_tree_always_on_top);
+		wl_array_for_each(subview, &subviews) {
+			(*subview)->workspace =
+				(*subview)->server->workspaces.current;
+			wlr_scene_node_reparent(&(*subview)->scene_tree->node,
+				(*subview)->workspace->tree);
+		}
+	}
+
+	wl_array_release(&subviews);
+}
+
+void
+view_toggle_always_on_top(struct view *view)
+{
+	if (view_is_always_on_top(view)) {
+		view_set_always_on_top(view, false);
+	} else {
+		view_set_always_on_top(view, true);
 	}
 }
 

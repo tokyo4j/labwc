@@ -31,6 +31,7 @@ view_impl_map(struct view *view)
 	desktop_focus_view(view, /*raise*/ true);
 	view_update_title(view);
 	view_update_app_id(view);
+	view_set_always_on_top(view, view_is_always_on_top(view_get_root(view)));
 	if (!view->been_mapped) {
 		window_rules_apply(view, LAB_WINDOW_RULE_EVENT_ON_FIRST_MAP);
 	}
