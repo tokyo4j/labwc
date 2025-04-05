@@ -166,7 +166,12 @@ keyboard_modifiers_notify(struct wl_listener *listener, void *data)
 		}
 	}
 
+	wlr_log(WLR_ERROR, "keyboard_modifiers_notify(): "
+		"%u %s", wlr_keyboard->modifiers.depressed, keyboard->wlr_keyboard->base.name);
+
 	if (!input_method_keyboard_grab_forward_modifiers(keyboard)) {
+		wlr_log(WLR_ERROR, "notifying modifiers: "
+			"%u %s", wlr_keyboard->modifiers.depressed, keyboard->wlr_keyboard->base.name);
 		/* Send modifiers to focused client */
 		wlr_seat_keyboard_notify_modifiers(seat->seat,
 			&wlr_keyboard->modifiers);
@@ -647,6 +652,9 @@ keyboard_key_notify(struct wl_listener *listener, void *data)
 		return;
 	}
 
+	wlr_log(WLR_ERROR, "keyboard_key_notify(): "
+		"%d %d %s", event->keycode, event->state, keyboard->wlr_keyboard->base.name);
+
 	if (handled) {
 		/*
 		 * We do not start the repeat-timer on pressed modifiers (like
@@ -658,6 +666,8 @@ keyboard_key_notify(struct wl_listener *listener, void *data)
 			start_keybind_repeat(seat->server, keyboard, event);
 		}
 	} else if (!input_method_keyboard_grab_forward_key(keyboard, event)) {
+		wlr_log(WLR_ERROR, "notifying key: "
+			"%d %d %s", event->keycode, event->state, keyboard->wlr_keyboard->base.name);
 		wlr_seat_set_keyboard(wlr_seat, keyboard->wlr_keyboard);
 		wlr_seat_keyboard_notify_key(wlr_seat, event->time_msec,
 			event->keycode, event->state);

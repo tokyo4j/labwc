@@ -330,6 +330,8 @@ input_method_keyboard_grab_forward_modifiers(struct keyboard *keyboard)
 	struct wlr_input_method_keyboard_grab_v2 *keyboard_grab =
 		get_keyboard_grab(keyboard);
 	if (keyboard_grab) {
+		wlr_log(WLR_ERROR, "forwarding modifier to IME: %u",
+			keyboard->wlr_keyboard->modifiers.depressed);
 		wlr_input_method_keyboard_grab_v2_set_keyboard(keyboard_grab,
 			keyboard->wlr_keyboard);
 		wlr_input_method_keyboard_grab_v2_send_modifiers(keyboard_grab,
@@ -352,6 +354,7 @@ input_method_keyboard_grab_forward_key(struct keyboard *keyboard,
 		&keyboard->base.seat->input_method_relay->forwarded_pressed_keys;
 	if (event->state == WL_KEYBOARD_KEY_STATE_RELEASED
 			&& !lab_set_contains(pressed_keys, event->keycode)) {
+		wlr_log(WLR_ERROR, "not forwarding key-release as key-press has not been forwarded");
 		return false;
 	}
 
@@ -363,6 +366,8 @@ input_method_keyboard_grab_forward_key(struct keyboard *keyboard,
 		} else {
 			lab_set_remove(pressed_keys, event->keycode);
 		}
+		wlr_log(WLR_ERROR, "forwarding key to IME: %d %d",
+			event->keycode, event->state);
 		wlr_input_method_keyboard_grab_v2_set_keyboard(keyboard_grab,
 			keyboard->wlr_keyboard);
 		wlr_input_method_keyboard_grab_v2_send_key(keyboard_grab,
@@ -405,6 +410,8 @@ update_active_text_input(struct input_method_relay *relay)
 	if (relay->input_method && relay->active_text_input
 			!= active_text_input) {
 		if (active_text_input) {
+			wlr_log(WLR_ERROR, "text-input#%d is enabled. activating im.",
+				wl_resource_get_id(active_text_input->input->resource));
 			wlr_input_method_v2_send_activate(relay->input_method);
 		} else {
 			wlr_input_method_v2_send_deactivate(relay->input_method);
@@ -649,6 +656,8 @@ handle_input_method_commit(struct wl_listener *listener, void *data)
 static void
 handle_keyboard_grab_destroy(struct wl_listener *listener, void *data)
 {
+	wlr_log(WLR_ERROR, "keyboard grab is destroyed");
+
 	struct input_method_relay *relay =
 		wl_container_of(listener, relay, keyboard_grab_destroy);
 	struct wlr_input_method_keyboard_grab_v2 *keyboard_grab = data;
@@ -665,6 +674,8 @@ handle_keyboard_grab_destroy(struct wl_listener *listener, void *data)
 static void
 handle_input_method_grab_keyboard(struct wl_listener *listener, void *data)
 {
+	wlr_log(WLR_ERROR, "keyboard is grabbed");
+
 	struct input_method_relay *relay = wl_container_of(listener, relay,
 		input_method_grab_keyboard);
 	struct wlr_input_method_keyboard_grab_v2 *keyboard_grab = data;
@@ -679,6 +690,7 @@ handle_input_method_grab_keyboard(struct wl_listener *listener, void *data)
 			keyboard_grab, active_keyboard);
 	}
 
+	wlr_log(WLR_ERROR, "resetting relay->forwarded_pressed_keys");
 	relay->forwarded_pressed_keys = (struct lab_set){0};
 
 	relay->keyboard_grab_destroy.notify = handle_keyboard_grab_destroy;

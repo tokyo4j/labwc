@@ -44,6 +44,9 @@ input_device_destroy(struct wl_listener *listener, void *data)
 			wlr_seat_set_keyboard(input->seat->seat,
 				&input->seat->keyboard_group->keyboard);
 		}
+		if (keyboard->is_virtual) {
+			wlr_log(WLR_ERROR, "virtual keyboard is destroyed");
+		}
 	}
 	free(input);
 }
@@ -504,6 +507,8 @@ new_virtual_pointer(struct wl_listener *listener, void *data)
 static void
 new_virtual_keyboard(struct wl_listener *listener, void *data)
 {
+	wlr_log(WLR_ERROR, "new_virtual_keyboard()");
+
 	struct seat *seat = wl_container_of(listener, seat, virtual_keyboard_new);
 	struct wlr_virtual_keyboard_v1 *virtual_keyboard = data;
 	struct wlr_input_device *device = &virtual_keyboard->keyboard.base;
