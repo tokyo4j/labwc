@@ -62,19 +62,11 @@ handle_drag_destroy(struct wl_listener *listener, void *data)
 	 * refocus the current surface under the cursor because keyboard focus
 	 * is not changed during drag.
 	 */
-	if (!rc.focus_follow_mouse) {
-		return;
-	}
-
-	struct cursor_context ctx = get_cursor_context(seat->server);
-	if (!ctx.surface) {
-		return;
-	}
-	seat_focus_surface(seat, NULL);
-	seat_focus_surface(seat, ctx.surface);
-
-	if (ctx.view && rc.raise_on_focus) {
-		view_move_to_front(ctx.view);
+	if (rc.focus_follow_mouse) {
+		struct cursor_context ctx = get_cursor_context(seat->server);
+		if (ctx.view) {
+			desktop_focus_view(ctx.view, rc.raise_on_focus);
+		}
 	}
 }
 
