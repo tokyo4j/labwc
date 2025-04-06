@@ -7,6 +7,7 @@
 #include "common/mem.h"
 #include "common/scaled-icon-buffer.h"
 #include "common/scaled-img-buffer.h"
+#include "common/scene-helpers.h"
 #include "labwc.h"
 #include "node.h"
 #include "ssd-internal.h"
@@ -65,7 +66,7 @@ add_scene_rect(struct wl_list *list, enum ssd_part_type type,
 	height = height >= 0 ? height : 0;
 
 	struct ssd_part *part = add_scene_part(list, type);
-	part->node = &wlr_scene_rect_create(
+	part->node = &lab_wlr_scene_rect_create(
 		parent, width, height, color)->node;
 	wlr_scene_node_set_position(part->node, x, y);
 	return part;

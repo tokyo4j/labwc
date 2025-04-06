@@ -136,7 +136,7 @@ ssd_border_update(struct ssd *ssd)
 			rect = wlr_scene_rect_from_node(part->node);
 			switch (part->type) {
 			case LAB_SSD_PART_LEFT:
-				wlr_scene_rect_set_size(rect,
+				lab_wlr_scene_rect_set_size(rect,
 					theme->border_width,
 					side_height);
 				wlr_scene_node_set_position(part->node,
@@ -144,7 +144,7 @@ ssd_border_update(struct ssd *ssd)
 					side_y);
 				continue;
 			case LAB_SSD_PART_RIGHT:
-				wlr_scene_rect_set_size(rect,
+				lab_wlr_scene_rect_set_size(rect,
 					theme->border_width,
 					side_height);
 				wlr_scene_node_set_position(part->node,
@@ -152,7 +152,7 @@ ssd_border_update(struct ssd *ssd)
 					side_y);
 				continue;
 			case LAB_SSD_PART_BOTTOM:
-				wlr_scene_rect_set_size(rect,
+				lab_wlr_scene_rect_set_size(rect,
 					full_width,
 					theme->border_width);
 				wlr_scene_node_set_position(part->node,
@@ -160,7 +160,7 @@ ssd_border_update(struct ssd *ssd)
 					height);
 				continue;
 			case LAB_SSD_PART_TOP:
-				wlr_scene_rect_set_size(rect,
+				lab_wlr_scene_rect_set_size(rect,
 					top_width,
 					theme->border_width);
 				wlr_scene_node_set_position(part->node,

@@ -152,7 +152,7 @@ set_squared_corners(struct ssd *ssd, bool enable)
 	FOR_EACH_STATE(ssd, subtree) {
 		part = ssd_get_part(&subtree->parts, LAB_SSD_PART_TITLEBAR);
 		wlr_scene_node_set_position(part->node, x, 0);
-		wlr_scene_rect_set_size(wlr_scene_rect_from_node(part->node),
+		lab_wlr_scene_rect_set_size(wlr_scene_rect_from_node(part->node),
 			width - 2 * x, theme->titlebar_height);
 
 		part = ssd_get_part(&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_LEFT);
@@ -299,7 +299,7 @@ ssd_titlebar_update(struct ssd *ssd)
 	int bg_offset = maximized || squared ? 0 : corner_width;
 	FOR_EACH_STATE(ssd, subtree) {
 		part = ssd_get_part(&subtree->parts, LAB_SSD_PART_TITLEBAR);
-		wlr_scene_rect_set_size(
+		lab_wlr_scene_rect_set_size(
 			wlr_scene_rect_from_node(part->node),
 			width - bg_offset * 2, theme->titlebar_height);
 

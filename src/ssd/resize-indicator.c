@@ -5,6 +5,7 @@
 #include <wlr/util/log.h>
 #include "common/macros.h"
 #include "common/scaled-font-buffer.h"
+#include "common/scene-helpers.h"
 #include "labwc.h"
 #include "resize-indicator.h"
 #include "resize-outlines.h"
@@ -41,9 +42,9 @@ resize_indicator_init(struct view *view)
 	assert(!indicator->tree);
 
 	indicator->tree = wlr_scene_tree_create(view->scene_tree);
-	indicator->border = wlr_scene_rect_create(
+	indicator->border = lab_wlr_scene_rect_create(
 		indicator->tree, 0, 0, rc.theme->osd_border_color);
-	indicator->background = wlr_scene_rect_create(
+	indicator->background = lab_wlr_scene_rect_create(
 		indicator->tree, 0, 0, rc.theme->osd_bg_color);
 	indicator->text = scaled_font_buffer_create(indicator->tree);
 
@@ -108,8 +109,9 @@ resize_indicator_set_size(struct resize_indicator *indicator, int width)
 		+ 2 * rc.theme->osd_window_switcher_padding
 		+ 2 * rc.theme->osd_border_width;
 
-	wlr_scene_rect_set_size(indicator->border, indicator->width, indicator->height);
-	wlr_scene_rect_set_size(indicator->background,
+	lab_wlr_scene_rect_set_size(indicator->border,
+		indicator->width, indicator->height);
+	lab_wlr_scene_rect_set_size(indicator->background,
 		indicator->width - 2 * rc.theme->osd_border_width,
 		indicator->height - 2 * rc.theme->osd_border_width);
 }

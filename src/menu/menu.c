@@ -178,7 +178,7 @@ item_create_scene_for_state(struct menuitem *item, float *text_color,
 	/* Create background */
 	int bg_width = menu->size.width
 		- 2 * theme->menu_border_width;
-	wlr_scene_rect_create(tree, bg_width, theme->menu_item_height, bg_color);
+	lab_wlr_scene_rect_create(tree, bg_width, theme->menu_item_height, bg_color);
 
 	int arrow_width = item->arrow ?
 		font_width(&rc.font_menuitem, item->arrow) : 0;
@@ -297,12 +297,12 @@ separator_create_scene(struct menuitem *menuitem, int *item_y)
 	menuitem->normal_tree = wlr_scene_tree_create(menuitem->tree);
 
 	/* Item background nodes */
-	wlr_scene_rect_create(menuitem->normal_tree, bg_width, bg_height,
+	lab_wlr_scene_rect_create(menuitem->normal_tree, bg_width, bg_height,
 		theme->menu_items_bg_color);
 
 	/* Draw separator line */
 	int line_width = bg_width - 2 * theme->menu_separator_padding_width;
-	struct wlr_scene_rect *line_rect = wlr_scene_rect_create(
+	struct wlr_scene_rect *line_rect = lab_wlr_scene_rect_create(
 		menuitem->normal_tree, line_width,
 		theme->menu_separator_line_thickness,
 		theme->menu_separator_color);
@@ -336,7 +336,7 @@ title_create_scene(struct menuitem *menuitem, int *item_y)
 	menuitem->normal_tree = wlr_scene_tree_create(menuitem->tree);
 
 	/* Background */
-	wlr_scene_rect_create(menuitem->normal_tree,
+	lab_wlr_scene_rect_create(menuitem->normal_tree,
 		bg_width, theme->menu_header_height, bg_color);
 
 	/* Draw separator title */

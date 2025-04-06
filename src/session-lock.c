@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include "common/mem.h"
+#include "common/scene-helpers.h"
 #include "labwc.h"
 #include "node.h"
 
@@ -94,7 +95,7 @@ lock_output_reconfigure(struct session_lock_output *output)
 	struct wlr_box box;
 	wlr_output_layout_get_box(output->manager->server->output_layout,
 		output->output->wlr_output, &box);
-	wlr_scene_rect_set_size(output->background, box.width, box.height);
+	lab_wlr_scene_rect_set_size(output->background, box.width, box.height);
 	if (output->surface) {
 		wlr_session_lock_surface_v1_configure(
 			output->surface, box.width, box.height);
@@ -217,9 +218,9 @@ session_lock_output_create(struct session_lock_manager *manager, struct output *
 	 * fully hidden
 	 */
 	float *black = (float[4]) { 0.f, 0.f, 0.f, 1.f };
-	struct wlr_scene_rect *background = wlr_scene_rect_create(tree, 0, 0, black);
+	struct wlr_scene_rect *background = lab_wlr_scene_rect_create(tree, 0, 0, black);
 	if (!background) {
-		wlr_log(WLR_ERROR, "session-lock: wlr_scene_rect_create()");
+		wlr_log(WLR_ERROR, "session-lock: lab_wlr_scene_rect_create()");
 		wlr_scene_node_destroy(&tree->node);
 		free(lock_output);
 		goto exit_session;

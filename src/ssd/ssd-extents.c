@@ -16,7 +16,7 @@ add_extent(struct wl_list *part_list, enum ssd_part_type type,
 {
 	float invisible[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	struct ssd_part *part = add_scene_part(part_list, type);
-	part->node = &wlr_scene_rect_create(parent, 0, 0, invisible)->node;
+	part->node = &lab_wlr_scene_rect_create(parent, 0, 0, invisible)->node;
 	return part;
 }
 
@@ -187,7 +187,7 @@ ssd_extents_update(struct ssd *ssd)
 		if (part_box.width != result_box.width
 				|| part_box.height != result_box.height) {
 			/* Partly visible */
-			wlr_scene_rect_set_size(rect, result_box.width,
+			lab_wlr_scene_rect_set_size(rect, result_box.width,
 				result_box.height);
 			wlr_scene_node_set_position(part->node,
 				target.x + (result_box.x - part_box.x),
@@ -195,7 +195,7 @@ ssd_extents_update(struct ssd *ssd)
 		} else {
 			/* Fully visible */
 			wlr_scene_node_set_position(part->node, target.x, target.y);
-			wlr_scene_rect_set_size(rect, target.width, target.height);
+			lab_wlr_scene_rect_set_size(rect, target.width, target.height);
 		}
 	}
 	pixman_region32_fini(&intersection);

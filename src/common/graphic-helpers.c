@@ -9,6 +9,7 @@
 #include "buffer.h"
 #include "common/graphic-helpers.h"
 #include "common/mem.h"
+#include "common/scene-helpers.h"
 
 static void
 multi_rect_destroy_notify(struct wl_listener *listener, void *data)
@@ -27,10 +28,10 @@ multi_rect_create(struct wlr_scene_tree *parent, float *colors[3], int line_widt
 	rect->destroy.notify = multi_rect_destroy_notify;
 	wl_signal_add(&rect->tree->node.events.destroy, &rect->destroy);
 	for (size_t i = 0; i < 3; i++) {
-		rect->top[i] = wlr_scene_rect_create(rect->tree, 0, 0, colors[i]);
-		rect->right[i] = wlr_scene_rect_create(rect->tree, 0, 0, colors[i]);
-		rect->bottom[i] = wlr_scene_rect_create(rect->tree, 0, 0, colors[i]);
-		rect->left[i] = wlr_scene_rect_create(rect->tree, 0, 0, colors[i]);
+		rect->top[i] = lab_wlr_scene_rect_create(rect->tree, 0, 0, colors[i]);
+		rect->right[i] = lab_wlr_scene_rect_create(rect->tree, 0, 0, colors[i]);
+		rect->bottom[i] = lab_wlr_scene_rect_create(rect->tree, 0, 0, colors[i]);
+		rect->left[i] = lab_wlr_scene_rect_create(rect->tree, 0, 0, colors[i]);
 		wlr_scene_node_set_position(&rect->top[i]->node,
 			i * line_width, i * line_width);
 		wlr_scene_node_set_position(&rect->left[i]->node,
@@ -65,13 +66,13 @@ multi_rect_set_size(struct multi_rect *rect, int width, int height)
 			i * line_width, height - (i + 1) * line_width);
 
 		/* Update sizes */
-		wlr_scene_rect_set_size(rect->top[i],
+		lab_wlr_scene_rect_set_size(rect->top[i],
 			width - i * line_width * 2, line_width);
-		wlr_scene_rect_set_size(rect->bottom[i],
+		lab_wlr_scene_rect_set_size(rect->bottom[i],
 			width - i * line_width * 2, line_width);
-		wlr_scene_rect_set_size(rect->left[i],
+		lab_wlr_scene_rect_set_size(rect->left[i],
 			line_width, height - (i + 1) * line_width * 2);
-		wlr_scene_rect_set_size(rect->right[i],
+		lab_wlr_scene_rect_set_size(rect->right[i],
 			line_width, height - (i + 1) * line_width * 2);
 	}
 }

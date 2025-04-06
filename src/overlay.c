@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <assert.h>
+#include "common/scene-helpers.h"
 #include "labwc.h"
 #include "overlay.h"
 #include "view.h"
@@ -17,7 +18,7 @@ create_overlay_rect(struct seat *seat, struct overlay_rect *rect,
 
 	if (rect->bg_enabled) {
 		/* Create a filled rectangle */
-		rect->bg_rect = wlr_scene_rect_create(
+		rect->bg_rect = lab_wlr_scene_rect_create(
 			rect->tree, 0, 0, theme->bg_color);
 	}
 
@@ -64,7 +65,7 @@ show_overlay(struct seat *seat, struct overlay_rect *rect, struct wlr_box *box)
 	}
 
 	if (rect->bg_enabled) {
-		wlr_scene_rect_set_size(rect->bg_rect, box->width, box->height);
+		lab_wlr_scene_rect_set_size(rect->bg_rect, box->width, box->height);
 	}
 	if (rect->border_enabled) {
 		multi_rect_set_size(rect->border_rect, box->width, box->height);

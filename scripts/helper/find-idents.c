@@ -327,6 +327,13 @@ lex(char *buffer)
 			token = add_token();
 			get_identifier_token(token);
 			token->kind = TOKEN_IDENTIFIER;
+			if (in_single_comment && !strcmp(token->name.buf,
+					"find_idents_skip_next_line")) {
+				/* go to next line */
+				while (*current_buffer_position++ != '\n');
+				/* skip next line */
+				while (*current_buffer_position++ != '\n');
+			}
 			continue;
 		case '0' ... '9':
 			token = add_token();

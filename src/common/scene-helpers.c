@@ -7,6 +7,7 @@
 #include <wlr/util/region.h>
 #include <wlr/util/transform.h>
 #include "common/scene-helpers.h"
+#include "common/macros.h"
 #include "labwc.h"
 #include "magnifier.h"
 #include "output-state.h"
@@ -37,6 +38,25 @@ lab_wlr_scene_get_prev_node(struct wlr_scene_node *node)
 		return NULL;
 	}
 	return prev;
+}
+
+struct wlr_scene_rect *
+lab_wlr_scene_rect_create(struct wlr_scene_tree *parent,
+		int width, int height, const float color[static 4])
+{
+	width = MAX(0, width);
+	height = MAX(0, height);
+	// find_idents_skip_next_line
+	return wlr_scene_rect_create(parent, width, height, color);
+}
+
+void
+lab_wlr_scene_rect_set_size(struct wlr_scene_rect *rect, int width, int height)
+{
+	width = MAX(0, width);
+	height = MAX(0, height);
+	// find_idents_skip_next_line
+	wlr_scene_rect_set_size(rect, width, height);
 }
 
 /*
