@@ -175,14 +175,19 @@ item_create_scene_for_state(struct menuitem *item, float *text_color,
 		icon_width = theme->menu_items_padding_x + icon_size;
 	}
 
-	/* Create background */
-	int bg_width = menu->size.width
-		- 2 * theme->menu_border_width;
-	wlr_scene_rect_create(tree, bg_width, theme->menu_item_height, bg_color);
-
+	int bg_width = menu->size.width - 2 * theme->menu_border_width;
 	int arrow_width = item->arrow ?
 		font_width(&rc.font_menuitem, item->arrow) : 0;
-	int label_max_width = bg_width - 2 * theme->menu_items_padding_x - arrow_width - icon_width;
+	int label_max_width = bg_width - 2 * theme->menu_items_padding_x
+		- arrow_width - icon_width;
+
+	if (label_max_width < 0) {
+		wlr_log(WLR_ERROR, "Not enough spaces for menu contents");
+		return tree;
+	}
+
+	/* Create background */
+	wlr_scene_rect_create(tree, bg_width, theme->menu_item_height, bg_color);
 
 	/* Create icon */
 	bool show_app_icon = !strcmp(item->parent->id, "client-list-combined-menu")
@@ -284,9 +289,16 @@ separator_create_scene(struct menuitem *menuitem, int *item_y)
 	assert(menuitem->type == LAB_MENU_SEPARATOR_LINE);
 	struct menu *menu = menuitem->parent;
 	struct theme *theme = menu->server->theme;
-	int bg_width = menu->size.width - 2 * theme->menu_border_width;
 	int bg_height = theme->menu_separator_line_thickness
 		+ 2 * theme->menu_separator_padding_height;
+	int bg_width = menu->size.width - 2 * theme->menu_border_width;
+	int line_width = bg_width - 2 * theme->menu_separator_padding_width;
+
+	if (line_width < 0) {
+		line_width = 0;
+		bg_width = MAX(bg_width, 0);
+		wlr_log(WLR_ERROR, "Not enough space for menu separator");
+	}
 
 	/* Menu item root node */
 	menuitem->tree = wlr_scene_tree_create(menu->scene_tree);
@@ -301,7 +313,6 @@ separator_create_scene(struct menuitem *menuitem, int *item_y)
 		theme->menu_items_bg_color);
 
 	/* Draw separator line */
-	int line_width = bg_width - 2 * theme->menu_separator_padding_width;
 	struct wlr_scene_rect *line_rect = wlr_scene_rect_create(
 		menuitem->normal_tree, line_width,
 		theme->menu_separator_line_thickness,
