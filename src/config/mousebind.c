@@ -44,6 +44,10 @@ mousebind_button_from_str(const char *str, uint32_t *modifiers)
 		return BTN_BACK;
 	} else if (!strcasecmp(str, "Task")) {
 		return BTN_TASK;
+	} else if (!strcasecmp(str, "Up") || !strcasecmp(str, "Down")) {
+		wlr_log(WLR_ERROR, "%s is not a valid mouse button. "
+			"For <mousebind>, you can use "
+			"<mousebind direction=\"%s\"> instead.", str, str);
 	}
 invalid:
 	wlr_log(WLR_ERROR, "unknown button (%s)", str);
