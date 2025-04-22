@@ -806,7 +806,7 @@ view_minimize(struct view *view, bool minimized)
 	assert(view);
 
 	if (view->server->input_mode == LAB_INPUT_STATE_WINDOW_SWITCHER) {
-		wlr_log(WLR_ERROR, "not minimizing window while window switching");
+		wlr_log(WLR_DEBUG, "not minimizing window while window switching");
 		return;
 	}
 
