@@ -59,7 +59,9 @@ view_impl_map(struct view *view)
 		}
 	}
 
-	view_impl_show(view);
+	if (!view->minimized) {
+		view_impl_show(view);
+	}
 
 	wlr_log(WLR_DEBUG, "[map] identifier=%s, title=%s",
 		view_get_string_prop(view, "app_id"),
