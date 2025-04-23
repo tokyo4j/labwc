@@ -564,13 +564,6 @@ handle_map_request(struct wl_listener *listener, void *data)
 	struct view *view = &xwayland_view->base;
 	struct wlr_xwayland_surface *xsurface = xwayland_view->xwayland_surface;
 
-	if (view_is_visible(view)) {
-		/* Probably shouldn't happen, but be sure */
-		return;
-	}
-
-	/* Keep the view invisible until actually mapped */
-	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
 	ensure_initial_geometry_and_output(view);
 
 	/*
@@ -687,9 +680,6 @@ xwayland_view_map(struct view *view)
 		xwayland_view->xwayland_surface;
 	assert(xwayland_surface);
 
-	if (view_is_visible(view)) {
-		return;
-	}
 	if (!xwayland_surface->surface) {
 		/*
 		 * We may get here if a user minimizes an xwayland dialog at the
@@ -708,8 +698,6 @@ xwayland_view_map(struct view *view)
 	 * explicitly (calling it twice is harmless).
 	 */
 	handle_map_request(&xwayland_view->map_request, NULL);
-
-	wlr_scene_node_set_enabled(&view->scene_tree->node, true);
 
 	if (view->surface != xwayland_surface->surface) {
 		if (view->surface) {
@@ -774,28 +762,14 @@ xwayland_view_map(struct view *view)
 static void
 xwayland_view_unmap(struct view *view, bool client_request)
 {
-	if (!view_is_visible(view)) {
-		goto out;
-	}
 	wl_list_remove(&view->commit.link);
-	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
-	view_impl_unmap(view);
 
 	/* Update usable area to account for XWayland "struts" (panels) */
 	if (xwayland_surface_from_view(view)->strut_partial) {
 		output_update_all_usable_areas(view->server, false);
 	}
 
-	/*
-	 * If the view was explicitly unmapped by the client (rather
-	 * than just minimized), destroy the foreign toplevel handle so
-	 * the unmapped view doesn't show up in panels and the like.
-	 */
-out:
-	if (client_request && view->foreign_toplevel) {
-		foreign_toplevel_destroy(view->foreign_toplevel);
-		view->foreign_toplevel = NULL;
-	}
+	view_impl_unmap(view);
 }
 
 static void
@@ -936,6 +910,7 @@ xwayland_view_create(struct server *server,
 
 	view->workspace = server->workspaces.current;
 	view->scene_tree = wlr_scene_tree_create(view->workspace->tree);
+	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
 	node_descriptor_create(&view->scene_tree->node, LAB_NODE_DESC_VIEW, view);
 
 	CONNECT_SIGNAL(xsurface, view, destroy);

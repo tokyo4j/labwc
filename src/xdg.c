@@ -690,10 +690,6 @@ init_foreign_toplevel(struct view *view)
 static void
 xdg_toplevel_view_map(struct view *view)
 {
-	if (view_is_visible(view)) {
-		return;
-	}
-
 	/*
 	 * An output should have been chosen when the surface was first
 	 * created, but take one more opportunity to assign an output if not.
@@ -702,7 +698,6 @@ xdg_toplevel_view_map(struct view *view)
 		view_set_output(view, output_nearest_to_cursor(view->server));
 	}
 	struct wlr_xdg_surface *xdg_surface = xdg_surface_from_view(view);
-	wlr_scene_node_set_enabled(&view->scene_tree->node, true);
 
 	if (!view->foreign_toplevel) {
 		init_foreign_toplevel(view);
@@ -754,20 +749,7 @@ xdg_toplevel_view_map(struct view *view)
 static void
 xdg_toplevel_view_unmap(struct view *view, bool client_request)
 {
-	if (view_is_visible(view)) {
-		wlr_scene_node_set_enabled(&view->scene_tree->node, false);
-		view_impl_unmap(view);
-	}
-
-	/*
-	 * If the view was explicitly unmapped by the client (rather
-	 * than just minimized), destroy the foreign toplevel handle so
-	 * the unmapped view doesn't show up in panels and the like.
-	 */
-	if (client_request && view->foreign_toplevel) {
-		foreign_toplevel_destroy(view->foreign_toplevel);
-		view->foreign_toplevel = NULL;
-	}
+	view_impl_unmap(view);
 }
 
 static pid_t

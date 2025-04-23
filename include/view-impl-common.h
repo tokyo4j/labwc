@@ -10,6 +10,10 @@
 
 struct view;
 
+/* Called from view_minimize() or view_impl_{map,unmap}() */
+void view_impl_show(struct view *view);
+void view_impl_hide(struct view *view);
+
 void view_impl_map(struct view *view);
 void view_impl_unmap(struct view *view);
 

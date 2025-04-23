@@ -24,6 +24,7 @@
 #include "snap.h"
 #include "ssd.h"
 #include "view.h"
+#include "view-impl-common.h"
 #include "window-rules.h"
 #include "wlr/util/log.h"
 #include "workspaces.h"
@@ -779,9 +780,9 @@ _minimize(struct view *view, bool minimized)
 	wl_signal_emit_mutable(&view->events.minimized, NULL);
 
 	if (minimized) {
-		view->impl->unmap(view, /* client_request */ false);
+		view_impl_hide(view);
 	} else {
-		view->impl->map(view);
+		view_impl_show(view);
 	}
 }
 

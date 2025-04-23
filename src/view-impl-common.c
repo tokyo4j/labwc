@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* view-impl-common.c: common code for shell view->impl functions */
-#include <stdio.h>
+#include <assert.h>
 #include <strings.h>
 #include "foreign-toplevel.h"
 #include "labwc.h"
@@ -9,9 +9,37 @@
 #include "window-rules.h"
 
 void
+view_impl_show(struct view *view)
+{
+	/* Must be called after minimization or mapping */
+	assert(!view->minimized && view->surface && view->surface->mapped);
+
+	struct server *server = view->server;
+
+	wlr_scene_node_set_enabled(&view->scene_tree->node, true);
+	desktop_focus_view(view, /*raise*/ true);
+	desktop_update_top_layer_visibility(server);
+	cursor_update_focus(server);
+}
+
+void
+view_impl_hide(struct view *view)
+{
+	/* Must be called after un-minimization or unmapping */
+	assert(view->minimized || (!view->surface || !view->surface->mapped));
+
+	struct server *server = view->server;
+
+	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
+	if (view == server->active_view) {
+		desktop_focus_topmost_view(server);
+	}
+	cursor_update_focus(view->server);
+}
+
+void
 view_impl_map(struct view *view)
 {
-	desktop_focus_view(view, /*raise*/ true);
 	view_update_title(view);
 	view_update_app_id(view);
 	if (!view->been_mapped) {
@@ -31,11 +59,7 @@ view_impl_map(struct view *view)
 		}
 	}
 
-	/*
-	 * Some clients (e.g. Steam's Big Picture Mode window) request
-	 * fullscreen before mapping.
-	 */
-	desktop_update_top_layer_visibility(view->server);
+	view_impl_show(view);
 
 	wlr_log(WLR_DEBUG, "[map] identifier=%s, title=%s",
 		view_get_string_prop(view, "app_id"),
@@ -45,10 +69,11 @@ view_impl_map(struct view *view)
 void
 view_impl_unmap(struct view *view)
 {
-	struct server *server = view->server;
-	if (view == server->active_view) {
-		desktop_focus_topmost_view(server);
+	if (view->foreign_toplevel) {
+		foreign_toplevel_destroy(view->foreign_toplevel);
+		view->foreign_toplevel = NULL;
 	}
+	view_impl_hide(view);
 }
 
 static bool
