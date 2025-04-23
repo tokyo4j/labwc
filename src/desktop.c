@@ -26,10 +26,9 @@ desktop_arrange_all_views(struct server *server)
 	 * we can't do anything useful with them; they will presumably
 	 * be initialized with valid positions/sizes later.
 	 *
-	 * We do not simply check view->mapped/been_mapped here because
-	 * views can have maximized/fullscreen geometry applied while
-	 * still unmapped. We do want to adjust the geometry of those
-	 * views.
+	 * We do not simply check view_is_visible(view)/view->been_mapped here
+	 * because views can have maximized/fullscreen geometry applied while
+	 * still unmapped. We do want to adjust the geometry of those views.
 	 */
 	struct view *view;
 	wl_list_for_each(view, &server->views, link) {
@@ -65,7 +64,7 @@ desktop_focus_view(struct view *view, bool raise)
 		return;
 	}
 
-	if (!view->mapped) {
+	if (!view_is_visible(view)) {
 		return;
 	}
 
@@ -126,7 +125,7 @@ desktop_topmost_focusable_view(struct server *server)
 			continue;
 		}
 		view = node_view_from_node(node);
-		if (view->mapped && view_is_focusable(view)) {
+		if (view_is_visible(view) && view_is_focusable(view)) {
 			return view;
 		}
 	}

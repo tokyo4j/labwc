@@ -417,7 +417,7 @@ static void
 handle_request_maximize(struct wl_listener *listener, void *data)
 {
 	struct view *view = wl_container_of(listener, view, request_maximize);
-	if (!view->mapped) {
+	if (!view_is_visible(view)) {
 		ensure_initial_geometry_and_output(view);
 		/*
 		 * Set decorations early to avoid changing geometry
@@ -437,7 +437,7 @@ handle_request_fullscreen(struct wl_listener *listener, void *data)
 {
 	struct view *view = wl_container_of(listener, view, request_fullscreen);
 	bool fullscreen = xwayland_surface_from_view(view)->fullscreen;
-	if (!view->mapped) {
+	if (!view_is_visible(view)) {
 		ensure_initial_geometry_and_output(view);
 	}
 	view_set_fullscreen(view, fullscreen);
@@ -545,7 +545,7 @@ handle_set_strut_partial(struct wl_listener *listener, void *data)
 		wl_container_of(listener, xwayland_view, set_strut_partial);
 	struct view *view = &xwayland_view->base;
 
-	if (view->mapped) {
+	if (view_is_visible(view)) {
 		output_update_all_usable_areas(view->server, false);
 	}
 }
@@ -564,7 +564,7 @@ handle_map_request(struct wl_listener *listener, void *data)
 	struct view *view = &xwayland_view->base;
 	struct wlr_xwayland_surface *xsurface = xwayland_view->xwayland_surface;
 
-	if (view->mapped) {
+	if (view_is_visible(view)) {
 		/* Probably shouldn't happen, but be sure */
 		return;
 	}
@@ -687,7 +687,7 @@ xwayland_view_map(struct view *view)
 		xwayland_view->xwayland_surface;
 	assert(xwayland_surface);
 
-	if (view->mapped) {
+	if (view_is_visible(view)) {
 		return;
 	}
 	if (!xwayland_surface->surface) {
@@ -709,7 +709,6 @@ xwayland_view_map(struct view *view)
 	 */
 	handle_map_request(&xwayland_view->map_request, NULL);
 
-	view->mapped = true;
 	wlr_scene_node_set_enabled(&view->scene_tree->node, true);
 
 	if (view->surface != xwayland_surface->surface) {
@@ -775,10 +774,9 @@ xwayland_view_map(struct view *view)
 static void
 xwayland_view_unmap(struct view *view, bool client_request)
 {
-	if (!view->mapped) {
+	if (!view_is_visible(view)) {
 		goto out;
 	}
-	view->mapped = false;
 	wl_list_remove(&view->commit.link);
 	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
 	view_impl_unmap(view);
@@ -849,7 +847,7 @@ xwayland_view_append_children(struct view *self, struct wl_array *children)
 		if (!view->surface) {
 			continue;
 		}
-		if (!view->mapped && !view->minimized) {
+		if (!view_is_visible(view) && !view->minimized) {
 			continue;
 		}
 		if (top_parent_of(view) != surface) {

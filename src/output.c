@@ -1019,7 +1019,7 @@ update_usable_area(struct output *output)
 #if HAVE_XWAYLAND
 	struct view *view;
 	wl_list_for_each(view, &output->server->views, link) {
-		if (view->mapped && view->type == LAB_XWAYLAND_VIEW) {
+		if (view_is_visible(view) && view->type == LAB_XWAYLAND_VIEW) {
 			xwayland_adjust_usable_area(view,
 				output->server->output_layout,
 				output->wlr_output, &output->usable_area);

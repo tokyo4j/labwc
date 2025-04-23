@@ -376,6 +376,12 @@ view_contains_window_type(struct view *view, enum window_type window_type)
 }
 
 bool
+view_is_visible(struct view *view)
+{
+	return view->scene_tree->node.enabled;
+}
+
+bool
 view_is_focusable(struct view *view)
 {
 	assert(view);
@@ -385,7 +391,7 @@ view_is_focusable(struct view *view)
 	if (view_wants_focus(view) != VIEW_WANTS_FOCUS_ALWAYS) {
 		return false;
 	}
-	return (view->mapped || view->minimized);
+	return view->surface->mapped;
 }
 
 /**

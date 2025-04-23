@@ -192,7 +192,6 @@ struct view {
 	struct wlr_scene_tree *scene_tree;
 	struct wlr_scene_tree *content_tree;
 
-	bool mapped;
 	bool been_mapped;
 	bool ssd_enabled;
 	bool ssd_titlebar_hidden;
@@ -464,6 +463,8 @@ bool view_contains_window_type(struct view *view, enum window_type window_type);
  * @edge: edge to be inverted
  */
 enum view_edge view_edge_invert(enum view_edge edge);
+
+bool view_is_visible(struct view *view);
 
 /**
  * view_is_focusable() - Check whether or not a view can be focused

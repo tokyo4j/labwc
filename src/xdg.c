@@ -399,7 +399,7 @@ handle_request_maximize(struct wl_listener *listener, void *data)
 		return;
 	}
 
-	if (!view->mapped && !view->output) {
+	if (!view_is_visible(view) && !view->output) {
 		view_set_output(view, output_nearest_to_cursor(view->server));
 	}
 	bool maximized = toplevel->requested.maximized;
@@ -421,7 +421,7 @@ handle_request_fullscreen(struct wl_listener *listener, void *data)
 		return;
 	}
 
-	if (!view->mapped && !view->output) {
+	if (!view_is_visible(view) && !view->output) {
 		view_set_output(view, output_nearest_to_cursor(view->server));
 	}
 	set_fullscreen_from_request(view,
@@ -537,7 +537,7 @@ xdg_toplevel_view_append_children(struct view *self, struct wl_array *children)
 		if (view->type != LAB_XDG_SHELL_VIEW) {
 			continue;
 		}
-		if (!view->mapped && !view->minimized) {
+		if (!view_is_visible(view) && !view->minimized) {
 			continue;
 		}
 		if (top_parent_of(view) != toplevel) {
@@ -690,11 +690,9 @@ init_foreign_toplevel(struct view *view)
 static void
 xdg_toplevel_view_map(struct view *view)
 {
-	if (view->mapped) {
+	if (view_is_visible(view)) {
 		return;
 	}
-
-	view->mapped = true;
 
 	/*
 	 * An output should have been chosen when the surface was first
@@ -756,8 +754,7 @@ xdg_toplevel_view_map(struct view *view)
 static void
 xdg_toplevel_view_unmap(struct view *view, bool client_request)
 {
-	if (view->mapped) {
-		view->mapped = false;
+	if (view_is_visible(view)) {
 		wlr_scene_node_set_enabled(&view->scene_tree->node, false);
 		view_impl_unmap(view);
 	}
