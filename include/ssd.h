@@ -35,8 +35,6 @@ enum ssd_part_type {
 	LAB_SSD_BUTTON,
 
 	LAB_SSD_PART_TITLEBAR,
-	LAB_SSD_PART_TITLEBAR_CORNER_RIGHT,
-	LAB_SSD_PART_TITLEBAR_CORNER_LEFT,
 	LAB_SSD_PART_TITLE,
 
 	/* shared by shadows, borders and extents */

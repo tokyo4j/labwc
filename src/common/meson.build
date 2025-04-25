@@ -17,6 +17,7 @@ labwc_sources += files(
   'scaled-icon-buffer.c',
   'scaled-img-buffer.c',
   'scaled-rect-buffer.c',
+  'scaled-titlebar-buffer.c',
   'scaled-scene-buffer.c',
   'scene-helpers.c',
   'set.c',
