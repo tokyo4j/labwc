@@ -139,28 +139,14 @@ bool
 is_cairo_pattern_opaque(cairo_pattern_t *pattern)
 {
 	double alpha = 0;
-	int stops = 0;
 
 	/* solid color? */
 	if (cairo_pattern_get_rgba(pattern, NULL, NULL, NULL, &alpha)
 			== CAIRO_STATUS_SUCCESS) {
 		return (alpha >= 0.999);
+	} else {
+		return false;
 	}
-
-	/* gradient? */
-	if (cairo_pattern_get_color_stop_count(pattern, &stops)
-			== CAIRO_STATUS_SUCCESS) {
-		for (int s = 0; s < stops; s++) {
-			cairo_pattern_get_color_stop_rgba(pattern, s,
-				NULL, NULL, NULL, NULL, &alpha);
-			if (alpha < 0.999) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	return false; /* unknown pattern type */
 }
 
 static int

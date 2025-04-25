@@ -28,13 +28,15 @@ draw_titlebar_outline(cairo_t *cairo, double w, double h, double r, double delta
 }
 
 static void
-shift_pattern_vertical(cairo_pattern_t *pattern, double dy)
+set_pattern_range(cairo_pattern_t *pattern,
+		double x, double y, double w, double h)
 {
 	w = MAX(1, w);
 	h = MAX(1, h);
 
 	cairo_matrix_t matrix;
-	cairo_matrix_init_translate(&matrix, 0, -dy);
+	cairo_matrix_init_scale(&matrix, 1.0 / w, 1.0 / h);
+	cairo_matrix_translate(&matrix, -x, -y);
 	cairo_pattern_set_matrix(pattern, &matrix);
 }
 
@@ -62,11 +64,14 @@ _create_buffer(struct scaled_scene_buffer *scaled_buffer, double scale)
 	/* Draw background */
 	draw_titlebar_outline(cairo, self->width, self->height, radius,
 		self->border_width);
-	shift_pattern_vertical(self->fill_pattern, self->border_width);
+	set_pattern_range(self->fill_pattern,
+		self->border_width, self->border_width,
+		self->width - self->border_width * 2,
+		self->height - self->border_width * 2);
 	cairo_set_source(cairo, self->fill_pattern);
 	cairo_set_line_width(cairo, 0.0);
 	cairo_fill(cairo);
-	shift_pattern_vertical(self->fill_pattern, 0);
+	set_pattern_range(self->fill_pattern, 0, 0, 1, 1);
 
 	/* Draw border */
 	draw_titlebar_outline(cairo, self->width, self->height, radius,
