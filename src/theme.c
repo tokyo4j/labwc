@@ -1128,19 +1128,19 @@ add_color_stop_rgba_premult(cairo_pattern_t *pattern, float offset,
 }
 
 static cairo_pattern_t *
-create_titlebar_pattern(const struct theme_background *bg, int height)
+create_titlebar_pattern(const struct theme_background *bg)
 {
 	cairo_pattern_t *pattern;
 
 	switch (bg->gradient) {
 	case LAB_GRADIENT_VERTICAL:
-		pattern = cairo_pattern_create_linear(0, 0, 0, height);
+		pattern = cairo_pattern_create_linear(0, 0, 1, 0);
 		add_color_stop_rgba_premult(pattern, 0, bg->color);
 		add_color_stop_rgba_premult(pattern, 1, bg->color_to);
 		break;
 
 	case LAB_GRADIENT_SPLITVERTICAL:
-		pattern = cairo_pattern_create_linear(0, 0, 0, height);
+		pattern = cairo_pattern_create_linear(0, 0, 1, 0);
 		add_color_stop_rgba_premult(pattern, 0, bg->color_split_to);
 		add_color_stop_rgba_premult(pattern, 0.5, bg->color);
 		add_color_stop_rgba_premult(pattern, 0.5, bg->color_to);
@@ -1161,8 +1161,7 @@ create_backgrounds(struct theme *theme)
 {
 	for (int active = THEME_INACTIVE; active <= THEME_ACTIVE; active++) {
 		theme->window[active].titlebar_pattern = create_titlebar_pattern(
-			&theme->window[active].title_bg,
-			theme->titlebar_height);
+			&theme->window[active].title_bg);
 	}
 
 	theme->menu_items_bg_pattern =
