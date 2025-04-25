@@ -3,12 +3,12 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <string.h>
-#include "buffer.h"
 #include "config.h"
 #include "common/mem.h"
 #include "common/scaled-font-buffer.h"
 #include "common/scaled-icon-buffer.h"
 #include "common/scaled-img-buffer.h"
+#include "common/scaled-titlebar-buffer.h"
 #include "common/scene-helpers.h"
 #include "common/string-helpers.h"
 #include "desktop-entry.h"
@@ -33,12 +33,8 @@ ssd_titlebar_create(struct ssd *ssd)
 	struct view *view = ssd->view;
 	struct theme *theme = view->server->theme;
 	int width = view->current.width;
-	int corner_width = ssd_get_corner_width();
 
 	struct wlr_scene_tree *parent;
-	struct wlr_buffer *titlebar_fill;
-	struct wlr_buffer *corner_top_left;
-	struct wlr_buffer *corner_top_right;
 	int active;
 
 	ssd->titlebar.tree = wlr_scene_tree_create(ssd->tree);
@@ -49,21 +45,21 @@ ssd_titlebar_create(struct ssd *ssd)
 		parent = subtree->tree;
 		active = (subtree == &ssd->titlebar.active) ?
 			THEME_ACTIVE : THEME_INACTIVE;
-		titlebar_fill = &theme->window[active].titlebar_fill->base;
-		corner_top_left = &theme->window[active].corner_top_left_normal->base;
-		corner_top_right = &theme->window[active].corner_top_right_normal->base;
 		wlr_scene_node_set_enabled(&parent->node, active);
 		wlr_scene_node_set_position(&parent->node, 0, -theme->titlebar_height);
 		wl_list_init(&subtree->parts);
 
+		struct scaled_titlebar_buffer *titlebar = scaled_titlebar_buffer_create(
+			parent, 0, 0, theme->border_width, rc.corner_radius,
+			theme->window[active].titlebar_pattern,
+			theme->window[active].border_color);
+		wlr_scene_node_set_position(&titlebar->scene_buffer->node,
+			-theme->border_width, -theme->border_width);
+
 		/* Background */
-		add_scene_buffer(&subtree->parts, LAB_SSD_PART_TITLEBAR, parent,
-			titlebar_fill, corner_width, 0);
-		add_scene_buffer(&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_LEFT, parent,
-			corner_top_left, -rc.theme->border_width, -rc.theme->border_width);
-		add_scene_buffer(&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_RIGHT, parent,
-			corner_top_right, width - corner_width,
-			-rc.theme->border_width);
+		struct ssd_part *part =
+			add_scene_part(&subtree->parts, LAB_SSD_PART_TITLEBAR);
+		part->node = &titlebar->scene_buffer->node;
 
 		/* Buttons */
 		struct title_button *b;
@@ -139,28 +135,10 @@ update_button_state(struct ssd_button *button, enum lab_button_state state,
 static void
 set_squared_corners(struct ssd *ssd, bool enable)
 {
-	struct view *view = ssd->view;
-	int width = view->current.width;
-	int corner_width = ssd_get_corner_width();
-	struct theme *theme = view->server->theme;
-
 	struct ssd_part *part;
 	struct ssd_sub_tree *subtree;
-	int x = enable ? 0 : corner_width;
 
 	FOR_EACH_STATE(ssd, subtree) {
-		part = ssd_get_part(&subtree->parts, LAB_SSD_PART_TITLEBAR);
-		wlr_scene_node_set_position(part->node, x, 0);
-		wlr_scene_buffer_set_dest_size(
-			wlr_scene_buffer_from_node(part->node),
-			width - 2 * x, theme->titlebar_height);
-
-		part = ssd_get_part(&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_LEFT);
-		wlr_scene_node_set_enabled(part->node, !enable);
-
-		part = ssd_get_part(&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_RIGHT);
-		wlr_scene_node_set_enabled(part->node, !enable);
-
 		/* (Un)round the corner buttons */
 		struct title_button *title_button;
 		wl_list_for_each(title_button, &rc.title_buttons_left, link) {
@@ -257,7 +235,6 @@ ssd_titlebar_update(struct ssd *ssd)
 {
 	struct view *view = ssd->view;
 	int width = view->current.width;
-	int corner_width = ssd_get_corner_width();
 	struct theme *theme = view->server->theme;
 
 	bool maximized = view->maximized == VIEW_AXIS_BOTH;
@@ -296,12 +273,14 @@ ssd_titlebar_update(struct ssd *ssd)
 	struct ssd_part *part;
 	struct ssd_sub_tree *subtree;
 	struct title_button *b;
-	int bg_offset = maximized || squared ? 0 : corner_width;
+	struct scaled_titlebar_buffer *titlebar_buffer;
+
 	FOR_EACH_STATE(ssd, subtree) {
 		part = ssd_get_part(&subtree->parts, LAB_SSD_PART_TITLEBAR);
-		wlr_scene_buffer_set_dest_size(
-			wlr_scene_buffer_from_node(part->node),
-			width - bg_offset * 2, theme->titlebar_height);
+		titlebar_buffer = scaled_titlebar_buffer_from_node(part->node);
+		scaled_titlebar_buffer_set_size(titlebar_buffer,
+			width + theme->border_width * 2,
+			theme->titlebar_height + theme->border_width);
 
 		x = theme->window_titlebar_padding_width;
 		wl_list_for_each(b, &rc.title_buttons_left, link) {
@@ -309,10 +288,6 @@ ssd_titlebar_update(struct ssd *ssd)
 			wlr_scene_node_set_position(part->node, x, y);
 			x += theme->window_button_width + theme->window_button_spacing;
 		}
-
-		x = width - corner_width;
-		part = ssd_get_part(&subtree->parts, LAB_SSD_PART_TITLEBAR_CORNER_RIGHT);
-		wlr_scene_node_set_position(part->node, x, -rc.theme->border_width);
 
 		x = width - theme->window_titlebar_padding_width + theme->window_button_spacing;
 		wl_list_for_each_reverse(b, &rc.title_buttons_right, link) {
