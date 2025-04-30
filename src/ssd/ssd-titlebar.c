@@ -9,6 +9,7 @@
 #include "common/scaled-font-buffer.h"
 #include "common/scaled-icon-buffer.h"
 #include "common/scaled-img-buffer.h"
+#include "common/scaled-texture-buffer.h"
 #include "common/scene-helpers.h"
 #include "common/string-helpers.h"
 #include "desktop-entry.h"
@@ -89,6 +90,10 @@ ssd_titlebar_create(struct ssd *ssd)
 			add_scene_button(&subtree->parts, b->type, parent,
 				imgs, x, y, view);
 		}
+
+		struct scaled_texture_buffer *tex =
+			scaled_texture_buffer_create(parent, 500, 30);
+		wlr_scene_node_set_position(&tex->scene_buffer->node, 0, -35);
 	} FOR_EACH_END
 
 	update_visible_buttons(ssd);

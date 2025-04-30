@@ -18,6 +18,7 @@ labwc_sources += files(
   'scaled-img-buffer.c',
   'scaled-rect-buffer.c',
   'scaled-scene-buffer.c',
+  'scaled-texture-buffer.c',
   'scene-helpers.c',
   'set.c',
   'surface-helpers.c',
