@@ -446,13 +446,13 @@ update_pressed_surface(struct seat *seat, struct cursor_context *ctx)
 	return false;
 }
 
-static bool
-process_cursor_motion_out_of_surface(struct server *server,
-		double *sx, double *sy)
+static void
+set_cursor_ctx_to_pressed_surface(struct seat *seat,
+		struct cursor_context *ctx)
 {
-	struct view *view = server->seat.pressed.view;
-	struct wlr_scene_node *node = server->seat.pressed.node;
-	struct wlr_surface *surface = server->seat.pressed.surface;
+	struct view *view = seat->pressed.view;
+	struct wlr_scene_node *node = seat->pressed.node;
+	struct wlr_surface *surface = seat->pressed.surface;
 	assert(surface);
 	int lx, ly;
 
@@ -470,27 +470,25 @@ process_cursor_motion_out_of_surface(struct server *server,
 	} else if (node && wlr_layer_surface_v1_try_from_wlr_surface(surface)) {
 		wlr_scene_node_coords(node, &lx, &ly);
 #if HAVE_XWAYLAND
-	} else if (node && node->parent == server->unmanaged_tree) {
+	} else if (node && node->parent == seat->server->unmanaged_tree) {
 		wlr_scene_node_coords(node, &lx, &ly);
 #endif
 	} else {
 		wlr_log(WLR_ERROR, "Can't detect surface for out-of-surface movement");
-		return false;
+		return;
 	}
 
-	*sx = server->seat.cursor->x - lx;
-	*sy = server->seat.cursor->y - ly;
-
-	return true;
+	*ctx = seat->pressed;
+	ctx->sx = seat->cursor->x - lx;
+	ctx->sy = seat->cursor->y - ly;
 }
 
 /*
  * Common logic shared by cursor_update_focus(), process_cursor_motion()
  * and cursor_axis()
  */
-static bool
-cursor_update_common(struct server *server, struct cursor_context *ctx,
-		bool cursor_has_moved, double *sx, double *sy)
+static void
+cursor_update_common(struct server *server, struct cursor_context *ctx)
 {
 	struct seat *seat = &server->seat;
 	struct wlr_seat *wlr_seat = seat->seat;
@@ -503,24 +501,22 @@ cursor_update_common(struct server *server, struct cursor_context *ctx,
 		 * interactive move/resize, window switcher and
 		 * menu interaction.
 		 */
-		return false;
+		return;
 	}
 
 	/* TODO: verify drag_icon logic */
 	if (seat->pressed.surface && ctx->surface != seat->pressed.surface
 			&& !update_pressed_surface(seat, ctx)
 			&& !seat->drag.active) {
-		if (cursor_has_moved) {
-			/*
-			 * Button has been pressed while over another
-			 * surface and is still held down.  Just send
-			 * the motion events to the focused surface so
-			 * we can keep scrolling or selecting text even
-			 * if the cursor moves outside of the surface.
-			 */
-			return process_cursor_motion_out_of_surface(server, sx, sy);
-		}
-		return false;
+		/*
+		 * Button has been pressed while over another surface and is
+		 * still held down. Just send the pointer events to the
+		 * pressed (focused) surface so we can keep scrolling or
+		 * selecting text even if the cursor moves outside of the
+		 * surface.
+		 */
+		set_cursor_ctx_to_pressed_surface(seat, ctx);
+		return;
 	}
 
 	if (ctx->surface) {
@@ -532,11 +528,6 @@ cursor_update_common(struct server *server, struct cursor_context *ctx,
 		wlr_seat_pointer_notify_enter(wlr_seat, ctx->surface,
 			ctx->sx, ctx->sy);
 		seat->server_cursor = LAB_CURSOR_CLIENT;
-		if (cursor_has_moved) {
-			*sx = ctx->sx;
-			*sy = ctx->sy;
-			return true;
-		}
 	} else {
 		/*
 		 * Cursor is over a server (labwc) surface.  Clear focus
@@ -554,7 +545,6 @@ cursor_update_common(struct server *server, struct cursor_context *ctx,
 			cursor_set(seat, cursor);
 		}
 	}
-	return false;
 }
 
 uint32_t
@@ -595,6 +585,10 @@ cursor_process_motion(struct server *server, uint32_t time, double *sx, double *
 		return false;
 	}
 
+	if (server->input_mode != LAB_INPUT_STATE_PASSTHROUGH) {
+		return false;
+	}
+
 	if (seat->drag.active) {
 		dnd_icons_move(seat, seat->cursor->x, seat->cursor->y);
 	}
@@ -617,8 +611,9 @@ cursor_process_motion(struct server *server, uint32_t time, double *sx, double *
 	struct wlr_surface *old_focused_surface =
 		seat->seat->pointer_state.focused_surface;
 
-	bool notify = cursor_update_common(server, &ctx,
-		/* cursor_has_moved */ true, sx, sy);
+	cursor_update_common(server, &ctx);
+	*sx = ctx.sx;
+	*sy = ctx.sy;
 
 	struct wlr_surface *new_focused_surface =
 		seat->seat->pointer_state.focused_surface;
@@ -634,7 +629,7 @@ cursor_process_motion(struct server *server, uint32_t time, double *sx, double *
 			new_focused_surface, rc.raise_on_focus);
 	}
 
-	return notify;
+	return true;
 }
 
 static void
@@ -653,8 +648,7 @@ _cursor_update_focus(struct server *server)
 			ctx.surface, rc.raise_on_focus);
 	}
 
-	double sx, sy;
-	cursor_update_common(server, &ctx, /*cursor_has_moved*/ false, &sx, &sy);
+	cursor_update_common(server, &ctx);
 }
 
 void
@@ -1328,8 +1322,7 @@ process_cursor_axis(struct server *server, enum wl_pointer_axis orientation,
 	/* Bindings swallow mouse events if activated */
 	if (ctx.surface && !handled) {
 		/* Make sure we are sending the events to the surface under the cursor */
-		double sx, sy;
-		cursor_update_common(server, &ctx, /*cursor_has_moved*/ false, &sx, &sy);
+		cursor_update_common(server, &ctx);
 
 		return true;
 	}
