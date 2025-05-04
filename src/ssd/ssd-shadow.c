@@ -34,8 +34,8 @@ static void
 corner_scale_crop(struct wlr_scene_buffer *buffer, int horizontal_overlap,
 		int vertical_overlap, int corner_size, bool switch_axes)
 {
-	int width = corner_size - horizontal_overlap;
-	int height = corner_size - vertical_overlap;
+	int width = MAX(corner_size - horizontal_overlap, 0);
+	int height = MAX(corner_size - vertical_overlap, 0);
 	/* Crop is applied before rotation so gets the axis flip */
 	struct wlr_fbox src_box = {
 		.x = switch_axes ? vertical_overlap : horizontal_overlap,
@@ -131,7 +131,7 @@ set_shadow_part_geometry(struct ssd_part *part, int width, int height,
 		y = -titlebar_height + inset;
 		wlr_scene_node_set_position(part->node, x, y);
 		wlr_scene_buffer_set_dest_size(
-			scene_buf, visible_shadow_width, height - 2 * inset);
+			scene_buf, visible_shadow_width, MAX(height - 2 * inset, 0));
 		wlr_scene_node_set_enabled(part->node, show_sides);
 		break;
 	case LAB_SSD_PART_BOTTOM:
@@ -139,7 +139,7 @@ set_shadow_part_geometry(struct ssd_part *part, int width, int height,
 		y = -titlebar_height + height;
 		wlr_scene_node_set_position(part->node, x, y);
 		wlr_scene_buffer_set_dest_size(
-			scene_buf, width - 2 * inset, visible_shadow_width);
+			scene_buf, MAX(width - 2 * inset, 0), visible_shadow_width);
 		wlr_scene_node_set_enabled(part->node, show_topbottom);
 		break;
 	case LAB_SSD_PART_LEFT:
@@ -147,7 +147,7 @@ set_shadow_part_geometry(struct ssd_part *part, int width, int height,
 		y = -titlebar_height + inset;
 		wlr_scene_node_set_position(part->node, x, y);
 		wlr_scene_buffer_set_dest_size(
-			scene_buf, visible_shadow_width, height - 2 * inset);
+			scene_buf, visible_shadow_width, MAX(height - 2 * inset, 0));
 		wlr_scene_node_set_enabled(part->node, show_sides);
 		break;
 	case LAB_SSD_PART_TOP:
@@ -155,7 +155,7 @@ set_shadow_part_geometry(struct ssd_part *part, int width, int height,
 		y = -titlebar_height - visible_shadow_width;
 		wlr_scene_node_set_position(part->node, x, y);
 		wlr_scene_buffer_set_dest_size(
-			scene_buf, width - 2 * inset, visible_shadow_width);
+			scene_buf, MAX(width - 2 * inset, 0), visible_shadow_width);
 		wlr_scene_node_set_enabled(part->node, show_topbottom);
 		break;
 	default:
