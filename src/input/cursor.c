@@ -621,18 +621,23 @@ cursor_process_motion(struct server *server, uint32_t time, double *sx, double *
 	bool notify = cursor_update_common(server, &ctx,
 		/* cursor_has_moved */ true, sx, sy);
 
-	struct wlr_surface *new_focused_surface =
-		seat->seat->pointer_state.focused_surface;
-
-	if (rc.focus_follow_mouse && new_focused_surface
-			&& old_focused_surface != new_focused_surface) {
+	if (rc.focus_follow_mouse && (ctx.surface || ctx.view)) {
 		/*
-		 * If followMouse=yes, update the keyboard focus when the
-		 * cursor enters a surface
+		 * Set keyboard focus on the window/surface below the cursor
+		 * when either of the following conditions is met:
+		 * - followMouseRequiresMovement=yes
+		 * - The cursor is entering a surface
+		 * - The cursor is entering or moving inside a SSD (ideally
+		 *   moving cursor inside a SSD should not update keyboard
+		 *   focus, but this is the simplest solution)
 		 */
-		desktop_focus_view_or_surface(seat,
-			view_from_wlr_surface(new_focused_surface),
-			new_focused_surface, rc.raise_on_focus);
+		if (!rc.focus_follow_mouse_requires_movement
+				|| (ctx.surface && ctx.surface != old_focused_surface)
+				|| (ssd_part_contains(LAB_SSD_FRAME, ctx.type)
+					&& ctx.type != LAB_SSD_CLIENT)) {
+			desktop_focus_view_or_surface(seat,
+				ctx.view, ctx.surface, rc.raise_on_focus);
+		}
 	}
 
 	return notify;
