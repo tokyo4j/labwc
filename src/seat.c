@@ -696,6 +696,14 @@ seat_focus(struct seat *seat, struct wlr_surface *surface,
 		return;
 	}
 
+	struct view *view = view_from_wlr_surface(surface);
+	if (view) {
+		struct view *root_view = view_get_root(view);
+		if (view != root_view && root_view->surface) {
+			surface = root_view->surface;
+		}
+	}
+
 	if (!wlr_seat_get_keyboard(seat->seat)) {
 		/*
 		 * wlr_seat_keyboard_notify_enter() sends wl_keyboard.modifiers,
