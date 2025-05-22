@@ -151,14 +151,14 @@ handle_sigchld(int signal, void *data)
 			(long)info.si_pid, info.si_status);
 		break;
 	case CLD_KILLED:
-	case CLD_DUMPED:
-		; /* works around "a label can only be part of a statement" */
+	case CLD_DUMPED: {
 		const char *signame = strsignal(info.si_status);
 		wlr_log(WLR_ERROR,
 			"spawned child %ld terminated with signal %d (%s)",
 				(long)info.si_pid, info.si_status,
 				signame ? signame : "unknown");
 		break;
+	}
 	default:
 		wlr_log(WLR_ERROR,
 			"spawned child %ld terminated unexpectedly: %d"

@@ -265,8 +265,7 @@ subtract_view_from_space(struct view *view, pixman_region32_t *available)
 	case PIXMAN_REGION_OUT:
 		view->edges_visible = 0;
 		return;
-	case PIXMAN_REGION_PART:
-		; /* works around "a label can only be part of a statement" */
+	case PIXMAN_REGION_PART: {
 		pixman_region32_t intersection;
 		pixman_region32_init(&intersection);
 		pixman_region32_intersect_rect(&intersection, available,
@@ -294,6 +293,7 @@ subtract_view_from_space(struct view *view, pixman_region32_t *available)
 		}
 		pixman_region32_fini(&intersection);
 		break;
+	}
 	}
 
 	/* Subtract the view geometry from the available region for the next check */

@@ -169,8 +169,7 @@ resize_indicator_update(struct view *view)
 	}
 
 	switch (view->server->input_mode) {
-	case LAB_INPUT_STATE_RESIZE:
-		; /* works around "a label can only be part of a statement" */
+	case LAB_INPUT_STATE_RESIZE: {
 		struct view_size_hints hints = view_get_size_hints(view);
 		snprintf(text, sizeof(text), "%d x %d",
 			MAX(0, view_box.width - hints.base_width)
@@ -178,13 +177,14 @@ resize_indicator_update(struct view *view)
 			MAX(0, view_box.height - hints.base_height)
 				/ MAX(1, hints.height_inc));
 		break;
-	case LAB_INPUT_STATE_MOVE:
-		; /* works around "a label can only be part of a statement" */
+	}
+	case LAB_INPUT_STATE_MOVE: {
 		struct border margin = ssd_get_margin(view->ssd);
 		snprintf(text, sizeof(text), "%d , %d",
 			view_box.x - margin.left,
 			view_box.y - margin.top);
 		break;
+	}
 	default:
 		wlr_log(WLR_ERROR, "Invalid input mode for indicator update %u",
 			view->server->input_mode);
