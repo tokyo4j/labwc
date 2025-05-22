@@ -20,6 +20,7 @@ add_project_arguments(
 cc = meson.get_compiler('c')
 
 add_project_arguments(cc.get_supported_arguments([
+  '-Wshadow',
   '-Wundef',
   '-Wlogical-op',
   '-Wmissing-include-dirs',
