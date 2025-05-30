@@ -1000,8 +1000,8 @@ xdg_toplevel_icon_handle_set_icon(struct wl_listener *listener, void *data)
 
 		struct wlr_xdg_toplevel_icon_v1_buffer *icon_buffer;
 		wl_list_for_each(icon_buffer, &event->icon->buffers, link) {
-			struct lab_data_buffer *buffer =
-				buffer_create_from_wlr_buffer(icon_buffer->buffer);
+			struct lab_data_buffer *buffer = buffer_create_from_wlr_buffer(
+				server->renderer, icon_buffer->buffer);
 			if (buffer) {
 				array_add(&buffers, buffer);
 			}

@@ -70,7 +70,8 @@ struct lab_data_buffer *buffer_create_cairo(uint32_t logical_width,
 struct lab_data_buffer *buffer_create_from_data(void *pixel_data, uint32_t width,
 	uint32_t height, uint32_t stride);
 
-struct lab_data_buffer *buffer_create_from_wlr_buffer(
+struct lab_data_buffer *
+buffer_create_from_wlr_buffer(struct wlr_renderer *renderer,
 	struct wlr_buffer *wlr_buffer);
 
 /*

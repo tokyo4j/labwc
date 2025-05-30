@@ -29,6 +29,8 @@
 #include <drm_fourcc.h>
 #include <wlr/interfaces/wlr_buffer.h>
 #include <wlr/util/log.h>
+#include <wlr/render/pass.h>
+#include <wlr/render/wlr_renderer.h>
 #include "buffer.h"
 #include "common/box.h"
 #include "common/mem.h"
@@ -149,27 +151,66 @@ buffer_create_from_data(void *pixel_data, uint32_t width, uint32_t height,
 	return buffer;
 }
 
-struct lab_data_buffer *
-buffer_create_from_wlr_buffer(struct wlr_buffer *wlr_buffer)
+static struct lab_data_buffer *
+copy_buffer(struct wlr_renderer *renderer, struct wlr_buffer *wlr_buffer)
 {
+	struct lab_data_buffer *buffer =
+		buffer_create_cairo(wlr_buffer->width, wlr_buffer->height, 1);
+	struct wlr_texture *texture = wlr_texture_from_buffer(renderer, wlr_buffer);
+	if (!texture) {
+		goto err;
+	}
+	struct wlr_render_pass *pass =
+		wlr_renderer_begin_buffer_pass(renderer, &buffer->base, NULL);
+	if (!pass) {
+		goto err;
+	}
+	wlr_render_pass_add_texture(pass, &(struct wlr_render_texture_options){
+		.texture = texture,
+		.src_box = {
+			.width = wlr_buffer->width,
+			.height = wlr_buffer->height,
+		},
+		.dst_box = {
+			.width = wlr_buffer->width,
+			.height = wlr_buffer->height,
+		},
+	});
+	if (!wlr_render_pass_submit(pass)) {
+		wlr_texture_destroy(texture);
+		wlr_buffer_drop(&buffer->base);
+		return NULL;
+	}
+err:
+	wlr_texture_destroy(texture);
+	return buffer;
+}
+
+struct lab_data_buffer *
+buffer_create_from_wlr_buffer(struct wlr_renderer *renderer, struct wlr_buffer *wlr_buffer)
+{
+	struct lab_data_buffer *buffer = NULL;
 	void *data;
 	uint32_t format;
 	size_t stride;
-	wlr_buffer_begin_data_ptr_access(wlr_buffer, WLR_BUFFER_DATA_PTR_ACCESS_READ,
-		&data, &format, &stride);
-	if (format != DRM_FORMAT_ARGB8888) {
-		/* TODO: support other formats */
-		wlr_buffer_end_data_ptr_access(wlr_buffer);
-		wlr_log(WLR_ERROR, "cannot create buffer: format=%d", format);
-		return NULL;
-	}
-	size_t buffer_size = stride * wlr_buffer->height;
-	void *copied_data = xmalloc(buffer_size);
-	memcpy(copied_data, data, buffer_size);
-	wlr_buffer_end_data_ptr_access(wlr_buffer);
 
-	return buffer_create_from_data(copied_data,
-		wlr_buffer->width, wlr_buffer->height, stride);
+	if (wlr_buffer_begin_data_ptr_access(wlr_buffer,
+			WLR_BUFFER_DATA_PTR_ACCESS_READ, &data, &format, &stride)) {
+		if (format == DRM_FORMAT_ARGB8888 && false) {
+			size_t buffer_size = stride * wlr_buffer->height;
+			void *copied_data = xmalloc(buffer_size);
+			memcpy(copied_data, data, buffer_size);
+			buffer = buffer_create_from_data(copied_data,
+				wlr_buffer->width, wlr_buffer->height, stride);
+		}
+		wlr_buffer_end_data_ptr_access(wlr_buffer);
+	}
+
+	if (!buffer) {
+		buffer = copy_buffer(renderer, wlr_buffer);
+	}
+
+	return buffer;
 }
 
 struct lab_data_buffer *
