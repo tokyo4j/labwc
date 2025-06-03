@@ -180,14 +180,6 @@ notify_motion(struct drawing_tablet *tablet, struct drawing_tablet_tool *tool,
 		struct wlr_surface *surface, double x, double y, double dx, double dy,
 		uint32_t time)
 {
-	bool enter_surface = false;
-	/* Postpone proximity-in on a new surface when the tip is down */
-	if (surface != tool->tool_v2->focused_surface && !tool->tool_v2->is_down) {
-		enter_surface = true;
-		wlr_tablet_v2_tablet_tool_notify_proximity_in(tool->tool_v2,
-			tablet->tablet_v2, surface);
-	}
-
 	switch (tablet->motion_mode) {
 	case LAB_TABLET_MOTION_ABSOLUTE:
 		wlr_cursor_warp_absolute(tablet->seat->cursor,
@@ -199,43 +191,16 @@ notify_motion(struct drawing_tablet *tablet, struct drawing_tablet_tool *tool,
 		break;
 	}
 
-	double sx, sy;
-	bool notify = cursor_process_motion(tablet->seat->server, time, &sx, &sy);
-	if (notify) {
-		wlr_tablet_v2_tablet_tool_notify_motion(tool->tool_v2, sx, sy);
-		if (enter_surface) {
-			/*
-			 * By re-using the existing cursor logic, we are also
-			 * setting pointer focus with
-			 * `wlr_seat_pointer_notify_clear_focus` when a tablet
-			 * pen enters a surface. This is a good thing. A side
-			 * effect is though, that a client will be notified
-			 * about a pointer event (pointer enter at coordinate)
-			 * and tablet events (proximity-in, move-to-coordinate)
-			 * at the same time. Following tablet actions, as long
-			 * as the pen stays on the surface, emit only tablet
-			 * events. That said, the client still thinks that there
-			 * is a pointer at the coordinate where the tablet
-			 * entered the surface. This can conflict with e.g. menu
-			 * or scrollbars because the client might be conflicted
-			 * about which coordinates (pointer or tablet) have
-			 * priority when both coordinates are on the same menu
-			 * or scrollbar.
-			 * It looks like that -1/-1 are valid coordinates (based
-			 * solemnly on testing with several client). Notifying
-			 * pointer motion to -1/-1, the pointer is sort-of out
-			 * of the way and is never on the same control element
-			 * with the tablet pen, so no conflicts anymore for the
-			 * client.
-			 * Note that Gnome/Mutter sends a pointer-leave
-			 * notification on tablet proximity-in to the client to
-			 * avoid this conflict. Going that way would probably
-			 * involve much more refactoring in labwc, and I'm not
-			 * sure what will break since I have the feeling that a
-			 * lot of internals rely on correct pointer focus.
-			 */
-			wlr_seat_pointer_notify_motion(tool->seat->seat, time, -1, -1);
+	wlr_seat_pointer_notify_clear_focus(tablet->seat->seat);
+
+	struct cursor_notify_info info = cursor_process_motion(tablet->seat->server, time);
+	if (info.notify) {
+		/* Postpone proximity-in on a new surface when the tip is down */
+		if (!tool->tool_v2->is_down) {
+			wlr_tablet_v2_tablet_tool_notify_proximity_in(tool->tool_v2,
+				tablet->tablet_v2, surface);
 		}
+		wlr_tablet_v2_tablet_tool_notify_motion(tool->tool_v2, info.motion_sx, info.motion_sy);
 	}
 }
 
@@ -496,17 +461,17 @@ handle_tablet_tool_tip(struct wl_listener *listener, void *data)
 		}
 
 		if (ev->state == WLR_TABLET_TOOL_TIP_DOWN) {
-			bool notify = cursor_process_button_press(tool->seat, BTN_LEFT,
-				ev->time_msec);
-			if (notify) {
+			struct cursor_notify_info info = cursor_process_button_press(
+				tool->seat, BTN_LEFT, ev->time_msec);
+			if (info.notify) {
 				seat_pointer_end_grab(tool->seat, surface);
 				wlr_tablet_v2_tablet_tool_notify_down(tool->tool_v2);
 				wlr_tablet_tool_v2_start_implicit_grab(tool->tool_v2);
 			}
 		} else if (ev->state == WLR_TABLET_TOOL_TIP_UP) {
-			bool notify = cursor_process_button_release(tool->seat, BTN_LEFT,
-				ev->time_msec);
-			if (notify) {
+			struct cursor_notify_info info = cursor_process_button_release(
+				tool->seat, BTN_LEFT, ev->time_msec);
+			if (info.notify) {
 				wlr_tablet_v2_tablet_tool_notify_up(tool->tool_v2);
 			}
 

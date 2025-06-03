@@ -8,7 +8,6 @@
 #include "idle.h"
 #include "input/touch.h"
 #include "labwc.h"
-#include "config/mousebind.h"
 #include "action.h"
 
 struct touch_point {
@@ -152,22 +151,17 @@ handle_touch_down(struct wl_listener *listener, void *data)
 		double sx = lx - surface_lx;
 		double sy = ly - surface_ly;
 
-		struct view *view = view_from_wlr_surface(touch_point->surface);
-		struct mousebind *mousebind;
-		wl_list_for_each(mousebind, &rc.mousebinds, link) {
-			if (mousebind->mouse_event == MOUSE_ACTION_PRESS
-					&& mousebind->button == BTN_LEFT
-					&& mousebind->context == LAB_SSD_CLIENT) {
-				actions_run(view, seat->server, &mousebind->actions, NULL);
-			}
-		}
-
 		if (touch_point_count == 1) {
 			wlr_cursor_warp_absolute(seat->cursor, &event->touch->base,
 				event->x, event->y);
 		}
-		wlr_seat_touch_notify_down(seat->seat, touch_point->surface,
-			event->time_msec, event->touch_id, sx, sy);
+
+		struct cursor_notify_info info = cursor_process_button_press(
+			seat, BTN_LEFT, event->time_msec);
+		if (info.notify) {
+			wlr_seat_touch_notify_down(seat->seat, touch_point->surface,
+				event->time_msec, event->touch_id, sx, sy);
+		}
 	} else {
 		if (touch_point_count == 1) {
 			cursor_emulate_move_absolute(seat, &event->touch->base,

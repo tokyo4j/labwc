@@ -37,6 +37,12 @@ struct cursor_context {
 	double sx, sy;
 };
 
+struct cursor_notify_info {
+	bool notify;
+	struct wlr_surface *focused_surface;
+	double motion_sx, motion_sy;
+};
+
 /**
  * get_cursor_context - find view and scene_node at cursor
  *
@@ -125,20 +131,22 @@ void cursor_update_image(struct seat *seat);
  * should be notified. Parameters sx, sy holds the surface coordinates
  * in that case.
  */
-bool cursor_process_motion(struct server *server, uint32_t time, double *sx, double *sy);
+struct cursor_notify_info cursor_process_motion(struct server *server, uint32_t time);
 
 /**
  * Processes cursor button press. The return value indicates if a client
  * should be notified.
  */
-bool cursor_process_button_press(struct seat *seat, uint32_t button, uint32_t time_msec);
+struct cursor_notify_info cursor_process_button_press(struct seat *seat,
+	uint32_t button, uint32_t time_msec);
 
 /**
  * Processes cursor button release. The return value indicates if the client
  * should be notified. Should be followed by cursor_finish_button_release()
  * after notifying a client.
  */
-bool cursor_process_button_release(struct seat *seat, uint32_t button, uint32_t time_msec);
+struct cursor_notify_info cursor_process_button_release(struct seat *seat,
+	uint32_t button, uint32_t time_msec);
 
 /**
  * Finishes cursor button release. The return value indicates if an interactive
