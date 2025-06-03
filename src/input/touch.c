@@ -11,18 +11,17 @@
 #include "config/mousebind.h"
 #include "action.h"
 
-/* Holds layout -> surface offsets to report motion events in relative coords */
 struct touch_point {
 	int32_t touch_id;
-	uint32_t x_offset;
-	uint32_t y_offset;
+	/* layout coordinates of the touched surface */
+	uint32_t surface_lx, surface_ly;
 	struct wlr_surface *surface;
 	struct wl_list link; /* seat.touch_points */
 };
 
-static struct wlr_surface*
+static struct wlr_surface *
 touch_get_coords(struct seat *seat, struct wlr_touch *touch, double x, double y,
-		double *x_offset, double *y_offset)
+		double *surface_lx, double *surface_ly)
 {
 	/*
 	 * Do not return a surface when mouse emulation is enforced. Not
@@ -44,8 +43,8 @@ touch_get_coords(struct seat *seat, struct wlr_touch *touch, double x, double y,
 	struct wlr_scene_node *node =
 		wlr_scene_node_at(&seat->server->scene->tree.node, lx, ly, &sx, &sy);
 
-	*x_offset = lx - sx;
-	*y_offset = ly - sy;
+	*surface_lx = lx - sx;
+	*surface_ly = ly - sy;
 
 	/* Find the surface and return it if it accepts touch events */
 	struct wlr_surface *surface = lab_wlr_surface_from_node(node);
@@ -91,8 +90,8 @@ handle_touch_motion(struct wl_listener *listener, void *data)
 			&event->touch->base, event->x, event->y, &lx, &ly);
 
 		/* Apply offsets to get surface coords before reporting event */
-		double sx = lx - touch_point->x_offset;
-		double sy = ly - touch_point->y_offset;
+		double sx = lx - touch_point->surface_lx;
+		double sy = ly - touch_point->surface_ly;
 
 		if (touch_point_count == 1) {
 			wlr_cursor_warp_absolute(seat->cursor, &event->touch->base,
@@ -126,12 +125,12 @@ handle_touch_down(struct wl_listener *listener, void *data)
 
 	/* Compute layout => surface offset and save for this touch point */
 	struct touch_point *touch_point = znew(*touch_point);
-	double x_offset = 0.0, y_offset = 0.0;
+	double surface_lx = 0.0, surface_ly = 0.0;
 	touch_point->surface = touch_get_coords(seat, event->touch,
-			event->x, event->y, &x_offset, &y_offset);
+			event->x, event->y, &surface_lx, &surface_ly);
 	touch_point->touch_id = event->touch_id;
-	touch_point->x_offset = x_offset;
-	touch_point->y_offset = y_offset;
+	touch_point->surface_lx = surface_lx;
+	touch_point->surface_ly = surface_ly;
 
 	wl_list_insert(&seat->touch_points, &touch_point->link);
 	int touch_point_count = wl_list_length(&seat->touch_points);
@@ -150,8 +149,8 @@ handle_touch_down(struct wl_listener *listener, void *data)
 			&event->touch->base, event->x, event->y, &lx, &ly);
 
 		/* Apply offsets to get surface coords before reporting event */
-		double sx = lx - x_offset;
-		double sy = ly - y_offset;
+		double sx = lx - surface_lx;
+		double sy = ly - surface_ly;
 
 		struct view *view = view_from_wlr_surface(touch_point->surface);
 		struct mousebind *mousebind;
