@@ -56,6 +56,19 @@ touch_get_coords(struct seat *seat, struct wlr_touch *touch, double x, double y,
 	return surface;
 }
 
+static struct touch_point *
+get_touch_point(struct seat *seat, int32_t touch_id)
+{
+	struct touch_point *touch_point;
+	wl_list_for_each(touch_point, &seat->touch_points, link) {
+		if (touch_point->touch_id == touch_id) {
+			return touch_point;
+		}
+	}
+	wlr_log(WLR_ERROR, "no matching touchpoint found: %d", touch_id);
+	return NULL;
+}
+
 static void
 handle_touch_motion(struct wl_listener *listener, void *data)
 {
@@ -66,33 +79,31 @@ handle_touch_motion(struct wl_listener *listener, void *data)
 
 	int touch_point_count = wl_list_length(&seat->touch_points);
 
-	/* Find existing touch point to determine initial offsets to subtract */
-	struct touch_point *touch_point;
-	wl_list_for_each(touch_point, &seat->touch_points, link) {
-		if (touch_point->touch_id == event->touch_id) {
-			if (touch_point->surface) {
-				/* Convert coordinates: first [0, 1] => layout */
-				double lx, ly;
-				wlr_cursor_absolute_to_layout_coords(seat->cursor,
-					&event->touch->base, event->x, event->y, &lx, &ly);
+	struct touch_point *touch_point = get_touch_point(seat, event->touch_id);
+	if (!touch_point) {
+		return;
+	}
 
-				/* Apply offsets to get surface coords before reporting event */
-				double sx = lx - touch_point->x_offset;
-				double sy = ly - touch_point->y_offset;
+	if (touch_point->surface) {
+		/* Convert coordinates: first [0, 1] => layout */
+		double lx, ly;
+		wlr_cursor_absolute_to_layout_coords(seat->cursor,
+			&event->touch->base, event->x, event->y, &lx, &ly);
 
-				if (touch_point_count == 1) {
-					wlr_cursor_warp_absolute(seat->cursor, &event->touch->base,
-						event->x, event->y);
-				}
-				wlr_seat_touch_notify_motion(seat->seat, event->time_msec,
-					event->touch_id, sx, sy);
-			} else {
-				if (touch_point_count == 1) {
-					cursor_emulate_move_absolute(seat, &event->touch->base,
-						event->x, event->y, event->time_msec);
-				}
-			}
-			return;
+		/* Apply offsets to get surface coords before reporting event */
+		double sx = lx - touch_point->x_offset;
+		double sy = ly - touch_point->y_offset;
+
+		if (touch_point_count == 1) {
+			wlr_cursor_warp_absolute(seat->cursor, &event->touch->base,
+				event->x, event->y);
+		}
+		wlr_seat_touch_notify_motion(seat->seat, event->time_msec,
+			event->touch_id, sx, sy);
+	} else {
+		if (touch_point_count == 1) {
+			cursor_emulate_move_absolute(seat, &event->touch->base,
+				event->x, event->y, event->time_msec);
 		}
 	}
 }
@@ -176,22 +187,20 @@ handle_touch_up(struct wl_listener *listener, void *data)
 
 	idle_manager_notify_activity(seat->seat);
 
-	/* Remove the touch point from the seat */
-	struct touch_point *touch_point, *tmp;
-	wl_list_for_each_safe(touch_point, tmp, &seat->touch_points, link) {
-		if (touch_point->touch_id == event->touch_id) {
-			if (touch_point->surface) {
-				wlr_seat_touch_notify_up(seat->seat, event->time_msec,
-					event->touch_id);
-			} else {
-				cursor_emulate_button(seat, BTN_LEFT,
-					WL_POINTER_BUTTON_STATE_RELEASED, event->time_msec);
-			}
-			wl_list_remove(&touch_point->link);
-			zfree(touch_point);
-			break;
-		}
+	struct touch_point *touch_point = get_touch_point(seat, event->touch_id);
+	if (!touch_point) {
+		return;
 	}
+
+	if (touch_point->surface) {
+		wlr_seat_touch_notify_up(seat->seat, event->time_msec,
+			event->touch_id);
+	} else {
+		cursor_emulate_button(seat, BTN_LEFT,
+			WL_POINTER_BUTTON_STATE_RELEASED, event->time_msec);
+	}
+	wl_list_remove(&touch_point->link);
+	zfree(touch_point);
 }
 
 void
