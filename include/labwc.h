@@ -437,6 +437,7 @@ struct constraint {
 };
 
 void xdg_popup_create(struct view *view, struct wlr_xdg_popup *wlr_popup);
+struct view *view_from_xdg_surface(struct wlr_xdg_surface *xdg_surface);
 void xdg_shell_init(struct server *server);
 void xdg_shell_finish(struct server *server);
 

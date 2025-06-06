@@ -77,7 +77,7 @@ handle_new_server_decoration(struct wl_listener *listener, void *data)
 		struct wlr_xdg_surface *xdg_surface =
 			wlr_xdg_surface_try_from_wlr_surface(wlr_deco->surface);
 		if (xdg_surface && xdg_surface->data) {
-			kde_deco->view = (struct view *)xdg_surface->data;
+			kde_deco->view = view_from_xdg_surface(xdg_surface);
 			handle_mode(&kde_deco->mode, wlr_deco);
 		}
 	}

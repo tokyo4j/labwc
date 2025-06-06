@@ -522,13 +522,21 @@ top_parent_of(struct view *view)
 	return toplevel;
 }
 
+struct view *
+view_from_xdg_surface(struct wlr_xdg_surface *xdg_surface)
+{
+	assert(xdg_surface);
+	assert(xdg_surface->data);
+	return (struct view *)xdg_surface->data;
+}
+
 /* Return the most senior parent (=root) view */
 static struct view *
 xdg_toplevel_view_get_root(struct view *view)
 {
 	struct wlr_xdg_toplevel *root = top_parent_of(view);
 	struct wlr_xdg_surface *surface = (struct wlr_xdg_surface *)root->base;
-	return (struct view *)surface->data;
+	return view_from_xdg_surface(surface);
 }
 
 static void
@@ -699,7 +707,7 @@ init_foreign_toplevel(struct view *view)
 		return;
 	}
 	struct wlr_xdg_surface *surface = toplevel->parent->base;
-	struct view *parent = surface->data;
+	struct view *parent = view_from_xdg_surface(surface);
 	if (!parent->foreign_toplevel) {
 		return;
 	}
@@ -861,7 +869,7 @@ handle_xdg_activation_request(struct wl_listener *listener, void *data)
 	if (!xdg_surface) {
 		return;
 	}
-	struct view *view = xdg_surface->data;
+	struct view *view = view_from_xdg_surface(xdg_surface);
 
 	if (!view) {
 		wlr_log(WLR_INFO, "Not activating surface - no view attached to surface");

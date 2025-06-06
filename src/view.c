@@ -45,7 +45,7 @@ view_from_wlr_surface(struct wlr_surface *surface)
 	struct wlr_xdg_surface *xdg_surface =
 		wlr_xdg_surface_try_from_wlr_surface(surface);
 	if (xdg_surface) {
-		return xdg_surface->data;
+		return view_from_xdg_surface(xdg_surface);
 	}
 #if HAVE_XWAYLAND
 	struct wlr_xwayland_surface *xsurface =

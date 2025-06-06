@@ -101,7 +101,7 @@ xdg_toplevel_decoration(struct wl_listener *listener, void *data)
 
 	struct xdg_deco *xdg_deco = znew(*xdg_deco);
 	xdg_deco->wlr_xdg_decoration = wlr_xdg_decoration;
-	xdg_deco->view = (struct view *)xdg_surface->data;
+	xdg_deco->view = view_from_xdg_surface(xdg_surface);
 
 	wl_signal_add(&wlr_xdg_decoration->events.destroy, &xdg_deco->destroy);
 	xdg_deco->destroy.notify = xdg_deco_destroy;
