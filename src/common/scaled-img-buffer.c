@@ -27,22 +27,9 @@ _destroy(struct scaled_scene_buffer *scaled_buffer)
 	free(self);
 }
 
-static bool
-_equal(struct scaled_scene_buffer *scaled_buffer_a,
-	struct scaled_scene_buffer *scaled_buffer_b)
-{
-	struct scaled_img_buffer *a = scaled_buffer_a->data;
-	struct scaled_img_buffer *b = scaled_buffer_b->data;
-
-	return lab_img_equal(a->img, b->img)
-		&& a->width == b->width
-		&& a->height == b->height;
-}
-
 static struct scaled_scene_buffer_impl impl = {
 	.create_buffer = _create_buffer,
 	.destroy = _destroy,
-	.equal = _equal,
 };
 
 struct scaled_img_buffer *

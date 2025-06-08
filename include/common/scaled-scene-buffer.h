@@ -17,9 +17,6 @@ struct scaled_scene_buffer_impl {
 		(struct scaled_scene_buffer *scaled_buffer, double scale);
 	/* Might be NULL or used for cleaning up */
 	void (*destroy)(struct scaled_scene_buffer *scaled_buffer);
-	/* Returns true if the two buffers are visually the same */
-	bool (*equal)(struct scaled_scene_buffer *scaled_buffer_a,
-		struct scaled_scene_buffer *scaled_buffer_b);
 };
 
 struct scaled_scene_buffer {
@@ -36,7 +33,6 @@ struct scaled_scene_buffer {
 	struct wl_listener destroy;
 	struct wl_listener outputs_update;
 	const struct scaled_scene_buffer_impl *impl;
-	struct wl_list link; /* all_scaled_buffers */
 };
 
 /*
@@ -127,14 +123,6 @@ struct scaled_scene_buffer *scaled_scene_buffer_create(
  */
 void scaled_scene_buffer_request_update(struct scaled_scene_buffer *self,
 	int width, int height);
-
-/**
- * scaled_scene_buffer_invalidate_sharing - clear the list of entire cached
- * scaled_scene_buffers used to share visually dupliated buffers. This should
- * be called on Reconfigure to force updates of newly created
- * scaled_scene_buffers rather than reusing ones created before Reconfigure.
- */
-void scaled_scene_buffer_invalidate_sharing(void);
 
 /* Private */
 struct scaled_scene_buffer_cache_entry {

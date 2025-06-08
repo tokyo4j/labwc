@@ -69,23 +69,9 @@ _destroy(struct scaled_scene_buffer *scaled_buffer)
 	free(self);
 }
 
-static bool
-_equal(struct scaled_scene_buffer *scaled_buffer_a, struct scaled_scene_buffer *scaled_buffer_b)
-{
-	struct scaled_rect_buffer *a = scaled_buffer_a->data;
-	struct scaled_rect_buffer *b = scaled_buffer_b->data;
-
-	return a->width == b->width
-		&& a->height == b->height
-		&& a->border_width == b->border_width
-		&& !memcmp(a->fill_color, b->fill_color, sizeof(a->fill_color))
-		&& !memcmp(a->border_color, b->border_color, sizeof(a->border_color));
-}
-
 static const struct scaled_scene_buffer_impl impl = {
 	.create_buffer = _create_buffer,
 	.destroy = _destroy,
-	.equal = _equal,
 };
 
 struct scaled_rect_buffer *scaled_rect_buffer_create(

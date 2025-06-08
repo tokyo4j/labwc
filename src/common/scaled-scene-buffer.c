@@ -8,17 +8,10 @@
 #include <wlr/types/wlr_scene.h>
 #include <wlr/util/log.h>
 #include "buffer.h"
-#include "common/list.h"
 #include "common/macros.h"
 #include "common/mem.h"
 #include "common/scaled-scene-buffer.h"
 #include "node.h"
-
-/*
- * This holds all the scaled_scene_buffers from all the implementers.
- * This is used to share visually duplicated buffers found via impl->equal().
- */
-static struct wl_list all_scaled_buffers = WL_LIST_INIT(&all_scaled_buffers);
 
 /* Internal API */
 static void
@@ -69,32 +62,6 @@ _update_buffer(struct scaled_scene_buffer *self, double scale)
 	}
 
 	struct wlr_buffer *wlr_buffer = NULL;
-
-	if (self->impl->equal) {
-		/* Search from other cached scaled-scene-buffers */
-		struct scaled_scene_buffer *scene_buffer;
-		wl_list_for_each(scene_buffer, &all_scaled_buffers, link) {
-			if (scene_buffer == self) {
-				continue;
-			}
-			if (self->impl != scene_buffer->impl) {
-				continue;
-			}
-			if (!self->impl->equal(self, scene_buffer)) {
-				continue;
-			}
-			cache_entry = find_cache_for_scale(scene_buffer, scale);
-			if (!cache_entry) {
-				continue;
-			}
-
-			/* Ensure self->width and self->height are set correctly */
-			self->width = scene_buffer->width;
-			self->height = scene_buffer->height;
-			wlr_buffer = cache_entry->buffer;
-			break;
-		}
-	}
 
 	if (!wlr_buffer) {
 		/*
@@ -160,7 +127,6 @@ _handle_node_destroy(struct wl_listener *listener, void *data)
 	if (self->impl->destroy) {
 		self->impl->destroy(self);
 	}
-	wl_list_remove(&self->link);
 	free(self);
 }
 
@@ -209,8 +175,6 @@ scaled_scene_buffer_create(struct wlr_scene_tree *parent,
 	self->drop_buffer = drop_buffer;
 	wl_list_init(&self->cache);
 
-	wl_list_insert(&all_scaled_buffers, &self->link);
-
 	/* Listen to outputs_update so we get notified about scale changes */
 	self->outputs_update.notify = _handle_outputs_update;
 	wl_signal_add(&self->scene_buffer->events.outputs_update, &self->outputs_update);
@@ -252,15 +216,5 @@ scaled_scene_buffer_request_update(struct scaled_scene_buffer *self,
 	 */
 	if (self->active_scale > 0) {
 		_update_buffer(self, self->active_scale);
-	}
-}
-
-void
-scaled_scene_buffer_invalidate_sharing(void)
-{
-	struct scaled_scene_buffer *scene_buffer, *tmp;
-	wl_list_for_each_safe(scene_buffer, tmp, &all_scaled_buffers, link) {
-		wl_list_remove(&scene_buffer->link);
-		wl_list_init(&scene_buffer->link);
 	}
 }

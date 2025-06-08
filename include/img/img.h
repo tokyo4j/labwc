@@ -70,9 +70,4 @@ struct lab_data_buffer *lab_img_render(struct lab_img *img,
  */
 void lab_img_destroy(struct lab_img *img);
 
-/**
- * lab_img_equal() - Returns true if two images draw the same content
- */
-bool lab_img_equal(struct lab_img *img_a, struct lab_img *img_b);
-
 #endif /* LABWC_IMG_H */
