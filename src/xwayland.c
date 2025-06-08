@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <wlr/xwayland.h>
+#include "buffer.h"
 #include "common/macros.h"
 #include "common/mem.h"
 #include "config/rcxml.h"
@@ -364,6 +365,7 @@ handle_destroy(struct wl_listener *listener, void *data)
 	wl_list_remove(&xwayland_view->set_override_redirect.link);
 	wl_list_remove(&xwayland_view->set_strut_partial.link);
 	wl_list_remove(&xwayland_view->set_window_type.link);
+	wl_list_remove(&xwayland_view->set_hints.link);
 	wl_list_remove(&xwayland_view->focus_in.link);
 	wl_list_remove(&xwayland_view->map_request.link);
 
@@ -561,6 +563,148 @@ static void
 handle_set_window_type(struct wl_listener *listener, void *data)
 {
 	/* Intentionally left blank */
+}
+
+struct icon_ctx {
+	xcb_get_geometry_reply_t *geo;
+	xcb_get_image_reply_t *img;
+	uint8_t *data;
+	xcb_format_t *fmt;
+};
+
+static xcb_format_t *
+find_format(xcb_connection_t *xcb_conn, uint8_t depth)
+{
+	const xcb_setup_t *setup = xcb_get_setup(xcb_conn);
+	xcb_format_iterator_t fmt_iter =
+		xcb_setup_pixmap_formats_iterator(setup);
+	for (; fmt_iter.rem; xcb_format_next(&fmt_iter)) {
+		xcb_format_t *fmt = fmt_iter.data;
+		if (fmt->depth == depth) {
+			return fmt;
+		}
+	}
+	return NULL;
+}
+
+static bool
+fetch_icon(xcb_connection_t *xcb_conn, xcb_pixmap_t pixmap,
+		struct icon_ctx *ctx)
+{
+	if (!pixmap) {
+		return false;
+	}
+	xcb_get_geometry_cookie_t geo_cookie =
+		xcb_get_geometry(xcb_conn, pixmap);
+	ctx->geo = xcb_get_geometry_reply(xcb_conn, geo_cookie, NULL);
+
+	xcb_get_image_cookie_t img_cookie = xcb_get_image(xcb_conn,
+		XCB_IMAGE_FORMAT_Z_PIXMAP, pixmap, 0, 0,
+		ctx->geo->width, ctx->geo->height, 0xffffffff);
+	ctx->img = xcb_get_image_reply(xcb_conn, img_cookie, NULL);
+	if (!ctx->img) {
+		return false;
+	}
+	ctx->data = xcb_get_image_data(ctx->img);
+	ctx->fmt = find_format(xcb_conn, ctx->geo->depth);
+
+	return true;
+}
+
+static void
+destroy_icon_ctx(struct icon_ctx *ctx)
+{
+	free(ctx->geo);
+	free(ctx->img);
+}
+
+#define BIT_IS_SET(u8_array, idx) ((u8_array)[(idx) / 8] & (1 << ((idx) % 8)))
+
+static void
+update_wm_hint_icon(struct xwayland_view *xwayland_view)
+{
+	struct view *view = &xwayland_view->base;
+	struct wlr_xwayland_surface *xsurface = xwayland_view->xwayland_surface;
+	xcb_connection_t *xcb_conn =
+		wlr_xwayland_get_xwm_connection(view->server->xwayland);
+	bool use_icon = xsurface->hints->flags & XCB_ICCCM_WM_HINT_ICON_PIXMAP;
+	bool use_mask = xsurface->hints->flags & XCB_ICCCM_WM_HINT_ICON_MASK;
+	struct icon_ctx img_ctx = {0};
+	struct icon_ctx mask_ctx = {0};
+
+	if (!use_icon) {
+		return;
+	}
+
+	if (!fetch_icon(xcb_conn, xsurface->hints->icon_pixmap, &img_ctx)) {
+		wlr_log(WLR_ERROR, "failed to load icon");
+		goto out;
+	}
+	if (img_ctx.fmt->depth != 24 || img_ctx.fmt->bits_per_pixel != 32
+			|| img_ctx.fmt->scanline_pad != 32) {
+		wlr_log(WLR_ERROR, "unsupported icon format");
+		goto out;
+	}
+
+	if (use_mask) {
+		if (!fetch_icon(xcb_conn, xsurface->hints->icon_mask, &mask_ctx)) {
+			wlr_log(WLR_ERROR, "failed to load icon mask");
+			goto out;
+		}
+		if (img_ctx.geo->width != mask_ctx.geo->width
+				|| img_ctx.geo->height != mask_ctx.geo->height) {
+			wlr_log(WLR_ERROR, "inconsistent icon mask size");
+			goto out;
+		}
+		if (mask_ctx.fmt->bits_per_pixel != 1
+				|| mask_ctx.fmt->depth != 1
+				|| mask_ctx.fmt->scanline_pad != 32) {
+			wlr_log(WLR_ERROR, "unsupported mask format");
+			goto out;
+		}
+	}
+
+	int w = img_ctx.geo->width;
+	int h = img_ctx.geo->height;
+
+	uint8_t *buf = calloc(1, w * h * 4);
+	int img_idx = 0;
+	int mask_idx = 0;
+
+	for (int y = 0; y < h; y++) {
+		for (int x = 0; x < w; x++) {
+			uint8_t *src = &img_ctx.data[4 * img_idx];
+			uint8_t *dst = &buf[4 * img_idx];
+			dst[0] = src[0];
+			dst[1] = src[1];
+			dst[2] = src[2];
+			if (use_mask && !BIT_IS_SET(mask_ctx.data, mask_idx)) {
+				dst[3] = 0;
+			} else {
+				dst[3] = 255;
+			}
+			img_idx++;
+			mask_idx++;
+		}
+		mask_idx += 31;
+		mask_idx -= mask_idx % 32;
+	}
+
+	struct lab_data_buffer *buffer =
+		buffer_create_from_data(buf, w, h, 4 * w);
+	cairo_surface_write_to_png(buffer->surface, "foo.png");
+	wlr_buffer_drop(&buffer->base);
+out:
+	destroy_icon_ctx(&img_ctx);
+	destroy_icon_ctx(&mask_ctx);
+}
+
+static void
+handle_set_hints(struct wl_listener *listener, void *data)
+{
+	struct xwayland_view *xwayland_view =
+		wl_container_of(listener, xwayland_view, set_hints);
+	update_wm_hint_icon(xwayland_view);
 }
 
 static void
@@ -825,6 +969,8 @@ xwayland_view_map(struct view *view)
 	if (xwayland_surface->strut_partial) {
 		output_update_all_usable_areas(view->server, false);
 	}
+
+	update_wm_hint_icon(xwayland_view);
 }
 
 static void
@@ -1011,6 +1157,7 @@ xwayland_view_create(struct server *server,
 	CONNECT_SIGNAL(xsurface, xwayland_view, set_override_redirect);
 	CONNECT_SIGNAL(xsurface, xwayland_view, set_strut_partial);
 	CONNECT_SIGNAL(xsurface, xwayland_view, set_window_type);
+	CONNECT_SIGNAL(xsurface, xwayland_view, set_hints);
 	CONNECT_SIGNAL(xsurface, xwayland_view, focus_in);
 	CONNECT_SIGNAL(xsurface, xwayland_view, map_request);
 
@@ -1086,6 +1233,7 @@ request_icon(struct xwayland_view *xwayland_view)
 			free(reply);
 			return false;
 		}
+		wlr_log(WLR_ERROR, "length=%d", xcb_get_property_value_length(reply));
 		wlr_log(WLR_INFO, "Got a valid icon for view %p:", &xwayland_view->base);
 		xcb_ewmh_wm_icon_iterator_t iter = xcb_ewmh_get_wm_icon_iterator(&icon);
 		for (; iter.rem; xcb_ewmh_get_wm_icon_next(&iter)) {
