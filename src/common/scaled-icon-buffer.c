@@ -50,19 +50,23 @@ _create_buffer(struct scaled_scene_buffer *scaled_buffer, double scale)
 #if HAVE_LIBSFDO
 	struct scaled_icon_buffer *self = scaled_buffer->data;
 	int icon_size = MIN(self->width, self->height);
-	struct lab_img *img = NULL;
+
+	if (self->img) {
+		lab_img_destroy(self->img);
+		self->img = NULL;
+	}
 
 	if (self->icon_name) {
-		img = desktop_entry_load_icon(self->server,
+		self->img = desktop_entry_load_icon(self->server,
 			self->icon_name, icon_size, scale);
 	} else if (self->view) {
 		if (self->view->icon.name) {
 			wlr_log(WLR_DEBUG, "loading icon by name: %s",
 				self->view->icon.name);
-			img = desktop_entry_load_icon(self->server,
+			self->img = desktop_entry_load_icon(self->server,
 				self->view->icon.name, icon_size, scale);
 		}
-		if (!img) {
+		if (!self->img) {
 			struct lab_data_buffer *buffer =
 				choose_best_icon_buffer(self, icon_size, scale);
 			if (buffer) {
@@ -71,26 +75,25 @@ _create_buffer(struct scaled_scene_buffer *scaled_buffer, double scale)
 					self->width, self->height, scale);
 			}
 		}
-		if (!img) {
+		if (!self->img) {
 			wlr_log(WLR_DEBUG, "loading icon by app_id");
 			const char *app_id = view_get_string_prop(self->view, "app_id");
-			img = desktop_entry_load_icon_from_app_id(self->server,
+			self->img = desktop_entry_load_icon_from_app_id(self->server,
 				app_id, icon_size, scale);
 		}
-		if (!img) {
+		if (!self->img) {
 			wlr_log(WLR_DEBUG, "loading fallback icon");
-			img = desktop_entry_load_icon(self->server,
+			self->img = desktop_entry_load_icon(self->server,
 				rc.fallback_app_icon_name, icon_size, scale);
 		}
 	}
 
-	if (!img) {
+	if (!self->img) {
 		return NULL;
 	}
 
 	struct lab_data_buffer *buffer =
-		lab_img_render(img, self->width, self->height, scale);
-	lab_img_destroy(img);
+		lab_img_render(self->img, self->width, self->height, scale);
 
 	return buffer;
 #else
@@ -105,6 +108,9 @@ _destroy(struct scaled_scene_buffer *scaled_buffer)
 	if (self->view) {
 		wl_list_remove(&self->on_view.set_icon.link);
 		wl_list_remove(&self->on_view.destroy.link);
+	}
+	if (self->img) {
+		lab_img_destroy(self->img);
 	}
 	free(self->icon_name);
 	free(self);

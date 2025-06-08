@@ -22,6 +22,12 @@ struct scaled_icon_buffer {
 	/* for general icon (e.g. in menus) */
 	char *icon_name;
 
+	/*
+	 * holds reference to lab_img_data that can be shared by other
+	 * scaled_icon_buffer
+	 */
+	struct lab_img *img;
+
 	int width;
 	int height;
 };
