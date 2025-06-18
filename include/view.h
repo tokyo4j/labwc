@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <wayland-util.h>
 #include <wlr/util/box.h>
+#include <wlr/util/edges.h>
 #include <xkbcommon/xkbcommon.h>
 #include "common/three-state.h"
 
@@ -59,6 +60,7 @@ enum view_axis {
 	VIEW_AXIS_INVALID = (1 << 2),
 };
 
+/* TODO: remove this and use wlr_direction instead */
 enum view_edge {
 	VIEW_EDGE_INVALID = 0,
 
@@ -66,7 +68,6 @@ enum view_edge {
 	VIEW_EDGE_RIGHT,
 	VIEW_EDGE_UP,
 	VIEW_EDGE_DOWN,
-	VIEW_EDGE_CENTER,
 };
 
 enum view_wants_focus {
@@ -170,6 +171,19 @@ struct view_impl {
 	pid_t (*get_pid)(struct view *view);
 };
 
+enum tiled_edge {
+	TILED_NONE = 0,
+	TILED_TOP = WLR_EDGE_TOP | WLR_EDGE_LEFT | WLR_EDGE_RIGHT,
+	TILED_BOTTOM = WLR_EDGE_BOTTOM | WLR_EDGE_LEFT | WLR_EDGE_RIGHT,
+	TILED_LEFT =  WLR_EDGE_TOP | WLR_EDGE_BOTTOM | WLR_EDGE_LEFT,
+	TILED_RIGHT =  WLR_EDGE_TOP | WLR_EDGE_BOTTOM | WLR_EDGE_RIGHT,
+	TILED_TOP_LEFT = WLR_EDGE_TOP | WLR_EDGE_LEFT,
+	TILED_TOP_RIGHT = WLR_EDGE_TOP | WLR_EDGE_RIGHT,
+	TILED_BOTTOM_LEFT = WLR_EDGE_BOTTOM | WLR_EDGE_LEFT,
+	TILED_BOTTOM_RIGHT = WLR_EDGE_BOTTOM | WLR_EDGE_RIGHT,
+	TILED_CENTER = WLR_EDGE_TOP | WLR_EDGE_BOTTOM | WLR_EDGE_LEFT | WLR_EDGE_RIGHT,
+};
+
 struct view {
 	struct server *server;
 	enum view_type type;
@@ -219,7 +233,7 @@ struct view {
 	bool tearing_hint;
 	enum three_state force_tearing;
 	bool visible_on_all_workspaces;
-	enum view_edge tiled;
+	enum tiled_edge tiled;
 	uint32_t edges_visible;  /* enum wlr_edges bitset */
 	bool inhibits_keybinds;
 	xkb_layout_index_t keyboard_layout;
@@ -322,7 +336,7 @@ struct view_query {
 	enum three_state iconified;
 	enum three_state focused;
 	enum three_state omnipresent;
-	enum view_edge tiled;
+	enum tiled_edge tiled;
 	char *tiled_region;
 	char *desktop;
 	enum ssd_mode decoration;
@@ -604,7 +618,7 @@ void view_adjust_for_layout_change(struct view *view);
 void view_move_to_edge(struct view *view, enum view_edge direction, bool snap_to_windows);
 void view_grow_to_edge(struct view *view, enum view_edge direction);
 void view_shrink_to_edge(struct view *view, enum view_edge direction);
-void view_snap_to_edge(struct view *view, enum view_edge direction,
+void view_snap_to_edge(struct view *view, enum tiled_edge direction,
 	bool across_outputs, bool store_natural_geometry);
 void view_snap_to_region(struct view *view, struct region *region, bool store_natural_geometry);
 void view_move_to_output(struct view *view, struct output *output);
@@ -655,6 +669,7 @@ void view_destroy(struct view *view);
 
 enum view_axis view_axis_parse(const char *direction);
 enum view_edge view_edge_parse(const char *direction);
+enum tiled_edge parse_tiled_edge(const char *direction);
 enum view_placement_policy view_placement_parse(const char *policy);
 
 /* xdg.c */

@@ -16,7 +16,6 @@ direction_from_view_edge(enum view_edge edge)
 		return WLR_DIRECTION_UP;
 	case VIEW_EDGE_DOWN:
 		return WLR_DIRECTION_DOWN;
-	case VIEW_EDGE_CENTER:
 	case VIEW_EDGE_INVALID:
 	default:
 		return WLR_DIRECTION_UP;

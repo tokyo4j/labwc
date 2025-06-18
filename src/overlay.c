@@ -93,7 +93,7 @@ inactivate_overlay(struct overlay *overlay)
 			&overlay->edge_rect.tree->node, false);
 	}
 	overlay->active.region = NULL;
-	overlay->active.edge = VIEW_EDGE_INVALID;
+	overlay->active.edge = TILED_NONE;
 	overlay->active.output = NULL;
 	if (overlay->timer) {
 		wl_event_source_timer_update(overlay->timer, 0);
@@ -113,29 +113,24 @@ show_region_overlay(struct seat *seat, struct region *region)
 }
 
 /* TODO: share logic with view_get_edge_snap_box() */
-static struct wlr_box get_edge_snap_box(enum view_edge edge, struct output *output)
+static struct wlr_box get_edge_snap_box(enum tiled_edge edge,
+		struct output *output)
 {
-	struct wlr_box box = output_usable_area_in_layout_coords(output);
-	switch (edge) {
-	case VIEW_EDGE_RIGHT:
-		box.x += box.width / 2;
-		/* fallthrough */
-	case VIEW_EDGE_LEFT:
-		box.width /= 2;
-		break;
-	case VIEW_EDGE_DOWN:
-		box.y += box.height / 2;
-		/* fallthrough */
-	case VIEW_EDGE_UP:
-		box.height /= 2;
-		break;
-	case VIEW_EDGE_CENTER:
-		/* <topMaximize> */
-		break;
-	default:
-		/* not reached */
-		assert(false);
-	}
+	struct wlr_box usable = output_usable_area_in_layout_coords(output);
+	int x1 = (edge & WLR_EDGE_LEFT) ? rc.gap
+					: (usable.width + rc.gap) / 2;
+	int y1 = (edge & WLR_EDGE_TOP) ? rc.gap
+					: (usable.height + rc.gap) / 2;
+	int x2 = (edge & WLR_EDGE_RIGHT) ? usable.width - rc.gap
+					: (usable.width - rc.gap) / 2;
+	int y2 = (edge & WLR_EDGE_BOTTOM) ? usable.height - rc.gap
+					: (usable.height - rc.gap) / 2;
+	struct wlr_box box = {
+		.x = x1 + usable.x,
+		.y = y1 + usable.y,
+		.width = x2 - x1,
+		.height = y2 - y1,
+	};
 	return box;
 }
 
@@ -143,7 +138,7 @@ static int
 handle_edge_overlay_timeout(void *data)
 {
 	struct seat *seat = data;
-	assert(seat->overlay.active.edge != VIEW_EDGE_INVALID
+	assert(seat->overlay.active.edge != TILED_NONE
 		&& seat->overlay.active.output);
 	struct wlr_box box = get_edge_snap_box(seat->overlay.active.edge,
 		seat->overlay.active.output);
@@ -151,37 +146,8 @@ handle_edge_overlay_timeout(void *data)
 	return 0;
 }
 
-static enum wlr_direction
-get_wlr_direction(enum view_edge edge)
-{
-	switch (edge) {
-	case VIEW_EDGE_LEFT:
-		return WLR_DIRECTION_LEFT;
-	case VIEW_EDGE_RIGHT:
-		return WLR_DIRECTION_RIGHT;
-	case VIEW_EDGE_UP:
-	case VIEW_EDGE_CENTER:
-		return WLR_DIRECTION_UP;
-	case VIEW_EDGE_DOWN:
-		return WLR_DIRECTION_DOWN;
-	default:
-		/* not reached */
-		assert(false);
-		return 0;
-	}
-}
-
-static bool
-edge_has_adjacent_output_from_cursor(struct seat *seat, struct output *output,
-		enum view_edge edge)
-{
-	return wlr_output_layout_adjacent_output(
-		seat->server->output_layout, get_wlr_direction(edge),
-		output->wlr_output, seat->cursor->x, seat->cursor->y);
-}
-
 static void
-show_edge_overlay(struct seat *seat, enum view_edge edge,
+show_edge_overlay(struct seat *seat, enum tiled_edge edge,
 		struct output *output)
 {
 	if (!rc.snap_overlay_enabled) {
@@ -195,12 +161,8 @@ show_edge_overlay(struct seat *seat, enum view_edge edge,
 	seat->overlay.active.edge = edge;
 	seat->overlay.active.output = output;
 
-	int delay;
-	if (edge_has_adjacent_output_from_cursor(seat, output, edge)) {
-		delay = rc.snap_overlay_delay_inner;
-	} else {
-		delay = rc.snap_overlay_delay_outer;
-	}
+	/* FIXME: Use different delay for inner/outer edges? */
+	int delay = rc.snap_overlay_delay_outer;
 
 	if (delay > 0) {
 		if (!seat->overlay.timer) {
@@ -234,8 +196,8 @@ overlay_update(struct seat *seat)
 
 	/* Edge-snapping overlay */
 	struct output *output;
-	enum view_edge edge = edge_from_cursor(seat, &output);
-	if (edge != VIEW_EDGE_INVALID) {
+	enum tiled_edge edge = edge_from_cursor(seat, &output);
+	if (edge != TILED_NONE) {
 		show_edge_overlay(seat, edge, output);
 		return;
 	}

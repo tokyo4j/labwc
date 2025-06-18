@@ -163,22 +163,21 @@ interactive_begin(struct view *view, enum input_mode mode, uint32_t edges)
 	}
 }
 
-enum view_edge
+enum tiled_edge
 edge_from_cursor(struct seat *seat, struct output **dest_output)
 {
 	if (!view_is_floating(seat->server->grabbed_view)) {
-		return VIEW_EDGE_INVALID;
+		return TILED_NONE;
 	}
 
-	int snap_range = rc.snap_edge_range;
-	if (!snap_range) {
-		return VIEW_EDGE_INVALID;
+	if (rc.snap_edge_range == 0) {
+		return TILED_NONE;
 	}
 
 	struct output *output = output_nearest_to_cursor(seat->server);
 	if (!output_is_usable(output)) {
 		wlr_log(WLR_ERROR, "output at cursor is unusable");
-		return VIEW_EDGE_INVALID;
+		return TILED_NONE;
 	}
 	*dest_output = output;
 
@@ -189,22 +188,44 @@ edge_from_cursor(struct seat *seat, struct output **dest_output)
 		output->wlr_output, &cursor_x, &cursor_y);
 
 	struct wlr_box *area = &output->usable_area;
-	if (cursor_x <= area->x + snap_range) {
-		return VIEW_EDGE_LEFT;
-	} else if (cursor_x >= area->x + area->width - snap_range) {
-		return VIEW_EDGE_RIGHT;
-	} else if (cursor_y <= area->y + snap_range) {
-		if (rc.snap_top_maximize) {
-			return VIEW_EDGE_CENTER;
-		} else {
-			return VIEW_EDGE_UP;
-		}
-	} else if (cursor_y >= area->y + area->height - snap_range) {
-		return VIEW_EDGE_DOWN;
-	} else {
-		/* Not close to any edge */
-		return VIEW_EDGE_INVALID;
+	struct wlr_box no_snap_area = {
+		.x = area->x + rc.snap_edge_range,
+		.y = area->y + rc.snap_edge_range,
+		.width = area->width - 2 * rc.snap_edge_range,
+		.height = area->height - 2 * rc.snap_edge_range,
+	};
+	if (wlr_box_contains_point(&no_snap_area, cursor_x, cursor_y)) {
+		return TILED_NONE;
 	}
+
+	bool top = (cursor_y - area->y) <= rc.snap_edge_corner_range;
+	bool bottom = (area->y + area->height - cursor_y) <= rc.snap_edge_corner_range;
+	bool left = (cursor_x - area->x) <= rc.snap_edge_corner_range;
+	bool right = (area->x + area->width - cursor_x) <= rc.snap_edge_corner_range;
+
+	if (top && left) {
+		return TILED_TOP_LEFT;
+	} else if (top && right) {
+		return TILED_TOP_RIGHT;
+	} else if (bottom && left) {
+		return TILED_BOTTOM_LEFT;
+	} else if (bottom && right) {
+		return TILED_BOTTOM_RIGHT;
+	} else if (top) {
+		if (rc.snap_top_maximize) {
+			return TILED_CENTER;
+		} else {
+			return TILED_TOP;
+		}
+	} else if (bottom) {
+		return TILED_BOTTOM;
+	} else if (left) {
+		return TILED_LEFT;
+	} else if (right) {
+		return TILED_RIGHT;
+	}
+
+	return TILED_NONE;
 }
 
 /* Returns true if view was snapped to any edge */
@@ -212,8 +233,8 @@ static bool
 snap_to_edge(struct view *view)
 {
 	struct output *output;
-	enum view_edge edge = edge_from_cursor(&view->server->seat, &output);
-	if (edge == VIEW_EDGE_INVALID) {
+	enum tiled_edge edge = edge_from_cursor(&view->server->seat, &output);
+	if (edge == TILED_NONE) {
 		return false;
 	}
 
@@ -222,7 +243,7 @@ snap_to_edge(struct view *view)
 	 * Don't store natural geometry here (it was
 	 * stored already in interactive_begin())
 	 */
-	if (edge == VIEW_EDGE_CENTER) {
+	if (edge == TILED_CENTER) {
 		/* <topMaximize> */
 		view_maximize(view, VIEW_AXIS_BOTH,
 			/*store_natural_geometry*/ false);
