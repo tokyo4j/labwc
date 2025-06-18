@@ -337,14 +337,22 @@ action_arg_from_xml_node(struct action *action, const char *nodename, const char
 		/* Falls through */
 	case ACTION_TYPE_TOGGLE_SNAP_TO_EDGE:
 	case ACTION_TYPE_SNAP_TO_EDGE:
+		if (!strcmp(argument, "direction")) {
+			enum tiled_edge edge = parse_tiled_edge(content);
+			if (edge == TILED_NONE) {
+				wlr_log(WLR_ERROR, "Invalid argument for action %s: '%s' (%s)",
+					action_names[action->type], argument, content);
+			} else {
+				action_arg_add_int(action, argument, edge);
+			}
+			goto cleanup;
+		}
+		break;
 	case ACTION_TYPE_GROW_TO_EDGE:
 	case ACTION_TYPE_SHRINK_TO_EDGE:
 		if (!strcmp(argument, "direction")) {
 			enum view_edge edge = view_edge_parse(content);
-			bool allow_center = action->type == ACTION_TYPE_TOGGLE_SNAP_TO_EDGE
-				|| action->type == ACTION_TYPE_SNAP_TO_EDGE;
-			if ((edge == VIEW_EDGE_CENTER && !allow_center)
-					|| edge == VIEW_EDGE_INVALID) {
+			if (edge == VIEW_EDGE_INVALID) {
 				wlr_log(WLR_ERROR, "Invalid argument for action %s: '%s' (%s)",
 					action_names[action->type], argument, content);
 			} else {
@@ -452,7 +460,7 @@ action_arg_from_xml_node(struct action *action, const char *nodename, const char
 		}
 		if (!strcmp(argument, "direction")) {
 			enum view_edge edge = view_edge_parse(content);
-			if (edge == VIEW_EDGE_CENTER) {
+			if (edge == VIEW_EDGE_INVALID) {
 				wlr_log(WLR_ERROR, "Invalid argument for action %s: '%s' (%s)",
 					action_names[action->type], argument, content);
 			} else {
@@ -939,7 +947,7 @@ actions_run(struct view *activator, struct server *server,
 		case ACTION_TYPE_SNAP_TO_EDGE:
 			if (view) {
 				/* Config parsing makes sure that direction is a valid direction */
-				enum view_edge edge = action_get_int(action, "direction", 0);
+				enum tiled_edge edge = action_get_int(action, "direction", 0);
 				if (action->type == ACTION_TYPE_TOGGLE_SNAP_TO_EDGE
 						&& view->maximized == VIEW_AXIS_NONE
 						&& !view->fullscreen

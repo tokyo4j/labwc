@@ -166,7 +166,7 @@ view_matches_query(struct view *view, struct view_query *query)
 		return false;
 	}
 
-	if (query->tiled != VIEW_EDGE_INVALID && query->tiled != view->tiled) {
+	if (query->tiled != TILED_NONE && query->tiled != view->tiled) {
 		return false;
 	}
 
@@ -430,7 +430,6 @@ view_edge_invert(enum view_edge edge)
 		return VIEW_EDGE_DOWN;
 	case VIEW_EDGE_DOWN:
 		return VIEW_EDGE_UP;
-	case VIEW_EDGE_CENTER:
 	case VIEW_EDGE_INVALID:
 	default:
 		return VIEW_EDGE_INVALID;
@@ -439,39 +438,25 @@ view_edge_invert(enum view_edge edge)
 
 static struct wlr_box
 view_get_edge_snap_box(struct view *view, struct output *output,
-		enum view_edge edge)
+		enum tiled_edge edge)
 {
 	struct wlr_box usable = output_usable_area_in_layout_coords(output);
-	int x_offset = edge == VIEW_EDGE_RIGHT
-		? (usable.width + rc.gap) / 2 : rc.gap;
-	int y_offset = edge == VIEW_EDGE_DOWN
-		? (usable.height + rc.gap) / 2 : rc.gap;
 
-	int base_width, base_height;
-	switch (edge) {
-	case VIEW_EDGE_LEFT:
-	case VIEW_EDGE_RIGHT:
-		base_width = (usable.width - 3 * rc.gap) / 2;
-		base_height = usable.height - 2 * rc.gap;
-		break;
-	case VIEW_EDGE_UP:
-	case VIEW_EDGE_DOWN:
-		base_width = usable.width - 2 * rc.gap;
-		base_height = (usable.height - 3 * rc.gap) / 2;
-		break;
-	default:
-	case VIEW_EDGE_CENTER:
-		base_width = usable.width - 2 * rc.gap;
-		base_height = usable.height - 2 * rc.gap;
-		break;
-	}
+	int x1 = (edge & WLR_EDGE_LEFT) ? rc.gap
+					: (usable.width + rc.gap) / 2;
+	int y1 = (edge & WLR_EDGE_TOP) ? rc.gap
+					: (usable.height + rc.gap) / 2;
+	int x2 = (edge & WLR_EDGE_RIGHT) ? usable.width - rc.gap
+					: (usable.width - rc.gap) / 2;
+	int y2 = (edge & WLR_EDGE_BOTTOM) ? usable.height - rc.gap
+					: (usable.height - rc.gap) / 2;
 
 	struct border margin = ssd_get_margin(view->ssd);
 	struct wlr_box dst = {
-		.x = x_offset + usable.x + margin.left,
-		.y = y_offset + usable.y + margin.top,
-		.width = base_width - margin.left - margin.right,
-		.height = base_height - margin.top - margin.bottom,
+		.x = x1 + usable.x + margin.left,
+		.y = y1 + usable.y + margin.top,
+		.width = x2 - x1 - margin.left - margin.right,
+		.height = y2 - y1 - margin.top - margin.bottom,
 	};
 
 	return dst;
@@ -1440,7 +1425,7 @@ void
 view_set_untiled(struct view *view)
 {
 	assert(view);
-	view->tiled = VIEW_EDGE_INVALID;
+	view->tiled = TILED_NONE;
 	view->tiled_region = NULL;
 	zfree(view->tiled_region_evacuate);
 	view_notify_tiled(view);
@@ -2114,10 +2099,37 @@ view_edge_parse(const char *direction)
 		return VIEW_EDGE_RIGHT;
 	} else if (!strcasecmp(direction, "down")) {
 		return VIEW_EDGE_DOWN;
-	} else if (!strcasecmp(direction, "center")) {
-		return VIEW_EDGE_CENTER;
 	} else {
 		return VIEW_EDGE_INVALID;
+	}
+}
+
+enum tiled_edge
+parse_tiled_edge(const char *direction)
+{
+	if (!direction) {
+		return TILED_NONE;
+	}
+	if (!strcasecmp(direction, "up")) {
+		return TILED_TOP;
+	} else if (!strcasecmp(direction, "down")) {
+		return TILED_BOTTOM;
+	} else if (!strcasecmp(direction, "left")) {
+		return TILED_LEFT;
+	} else if (!strcasecmp(direction, "right")) {
+		return TILED_RIGHT;
+	} else if (!strcasecmp(direction, "up-left")) {
+		return TILED_TOP_LEFT;
+	} else if (!strcasecmp(direction, "up-right")) {
+		return TILED_TOP_RIGHT;
+	} else if (!strcasecmp(direction, "down-left")) {
+		return TILED_BOTTOM_LEFT;
+	} else if (!strcasecmp(direction, "down-right")) {
+		return TILED_BOTTOM_RIGHT;
+	} else if (!strcasecmp(direction, "center")) {
+		return TILED_CENTER;
+	} else {
+		return TILED_NONE;
 	}
 }
 
@@ -2142,7 +2154,7 @@ view_placement_parse(const char *policy)
 }
 
 void
-view_snap_to_edge(struct view *view, enum view_edge edge,
+view_snap_to_edge(struct view *view, enum tiled_edge edge,
 			bool across_outputs, bool store_natural_geometry)
 {
 	assert(view);
@@ -2160,24 +2172,7 @@ view_snap_to_edge(struct view *view, enum view_edge edge,
 	view_set_shade(view, false);
 
 	if (across_outputs && view->tiled == edge && view->maximized == VIEW_AXIS_NONE) {
-		/* We are already tiled for this edge; try to switch outputs */
-		output = output_get_adjacent(view->output, edge, /* wrap */ false);
-
-		if (!output) {
-			/*
-			 * No more output to move to
-			 *
-			 * We re-apply the tiled geometry without changing any
-			 * state because the window might have been moved away
-			 * (and thus got untiled) and then snapped back to the
-			 * original edge.
-			 */
-			view_apply_tiled_geometry(view);
-			return;
-		}
-
-		/* When switching outputs, jump to the opposite edge */
-		edge = view_edge_invert(edge);
+		/* FIXME: what to do here? */
 	}
 
 	if (view->maximized != VIEW_AXIS_NONE) {

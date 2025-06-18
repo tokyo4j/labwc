@@ -599,34 +599,14 @@ xdg_toplevel_view_notify_tiled(struct view *view)
 		return;
 	}
 
-	enum wlr_edges edge = WLR_EDGE_NONE;
+	uint32_t edge = WLR_EDGE_NONE;
 
 	bool want_edge = rc.snap_tiling_events_mode & LAB_TILING_EVENTS_EDGE;
 	bool want_region = rc.snap_tiling_events_mode & LAB_TILING_EVENTS_REGION;
 
-	/*
-	 * Edge-snapped view are considered tiled on the snapped edge and those
-	 * perpendicular to it.
-	 */
 	if (want_edge) {
-		switch (view->tiled) {
-		case VIEW_EDGE_LEFT:
-			edge = WLR_EDGE_LEFT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM;
-			break;
-		case VIEW_EDGE_RIGHT:
-			edge = WLR_EDGE_RIGHT | WLR_EDGE_TOP | WLR_EDGE_BOTTOM;
-			break;
-		case VIEW_EDGE_UP:
-			edge = WLR_EDGE_TOP | WLR_EDGE_LEFT | WLR_EDGE_RIGHT;
-			break;
-		case VIEW_EDGE_DOWN:
-			edge = WLR_EDGE_BOTTOM | WLR_EDGE_LEFT | WLR_EDGE_RIGHT;
-			break;
-		default:
-			edge = WLR_EDGE_NONE;
-		}
+		edge = view->tiled;
 	}
-
 	if (want_region && view->tiled_region) {
 		/* Region-snapped views are considered tiled on all edges */
 		edge = WLR_EDGE_LEFT | WLR_EDGE_RIGHT |

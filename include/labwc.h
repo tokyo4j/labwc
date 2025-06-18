@@ -549,7 +549,7 @@ void interactive_begin(struct view *view, enum input_mode mode, uint32_t edges);
 void interactive_finish(struct view *view);
 void interactive_cancel(struct view *view);
 /* Possibly returns VIEW_EDGE_CENTER if <topMaximize> is yes */
-enum view_edge edge_from_cursor(struct seat *seat, struct output **dest_output);
+enum tiled_edge edge_from_cursor(struct seat *seat, struct output **dest_output);
 
 void output_init(struct server *server);
 void output_finish(struct server *server);
