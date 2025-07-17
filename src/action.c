@@ -492,6 +492,7 @@ action_arg_from_xml_node(struct action *action, const char *nodename, const char
 		}
 		break;
 	case ACTION_TYPE_IF:
+	case ACTION_TYPE_FOR_EACH:
 		if (!strcmp(argument, "text.prompt")) {
 			action_arg_add_str(action, "prompt_text", content);
 		}
@@ -847,6 +848,9 @@ cleanup:
 	free(command);
 }
 
+static void run_action(struct view *view, struct server *server,
+	struct action *action, struct cursor_context *ctx, bool prompt_accepted);
+
 bool
 action_check_prompt_result(pid_t pid, int exit_code)
 {
@@ -857,73 +861,36 @@ action_check_prompt_result(pid_t pid, int exit_code)
 		}
 
 		wlr_log(WLR_INFO, "Found pending prompt for exit code %d", exit_code);
-		struct wl_list *actions = NULL;
 		/*
 		 * TODO: figure out how to have more than 2 choices,
 		 *       maybe by using branch names like cond_0, cond_1
 		 *       and so on and falling back to 'then' and 'else'
 		 *       if not found?
 		 */
-		if (exit_code == 0) {
-			wlr_log(WLR_INFO, "Selected the 'then' branch");
-			actions = action_get_actionlist(prompt->action, "then");
-		} else {
-			wlr_log(WLR_INFO, "Selected the 'else' branch");
-			actions = action_get_actionlist(prompt->action, "else");
-		}
-		if (actions) {
-			wlr_log(WLR_INFO, "Running actions");
-			actions_run(prompt->view, prompt->server,
-				actions, /*cursor_ctx*/ NULL);
-		} else {
-			wlr_log(WLR_INFO, "No actions for selected branch");
-		}
+		run_action(prompt->view, prompt->server, prompt->action,
+			NULL, exit_code != 0);
 		action_prompt_destroy(prompt);
 		return true;
 	}
 	return false;
 }
 
-static bool
-run_if_action(struct view *view, struct server *server, struct action *action)
-{
-	struct view_query *query;
-	struct wl_list *queries, *actions;
-	const char *branch = "then";
-
-	queries = action_get_querylist(action, "query");
-	if (view && queries) {
-		branch = "else";
-		/* All queries are OR'ed */
-		wl_list_for_each(query, queries, link) {
-			if (view_matches_query(view, query)) {
-				branch = "then";
-				break;
-			}
-		}
+static bool match_queries(struct view *view, struct action *action) {
+	struct wl_list *queries = action_get_querylist(action, "query");
+	if (!queries) {
+		return true;
+	}
+	if (!view) {
+		return false;
 	}
 
-	if (!strcmp(branch, "then")) {
-		/* At least one of the queries was matched or there was no query */
-		if (action_get_str(action, "prompt_text", NULL)) {
-			/*
-			 * We delay the selection and execution of the
-			 * branch until we get a response from the user.
-			 */
-			action_prompt_create(view, server, action);
-			/*
-			 * FIXME: Pretends to have matched the query which
-			 *        somewhat breaks the None branch in ForEach.
-			 */
+	struct view_query *query;
+	wl_list_for_each(query, queries, link) {
+		if (view_matches_query(view, query)) {
 			return true;
 		}
 	}
-
-	actions = action_get_actionlist(action, branch);
-	if (actions) {
-		actions_run(view, server, actions, NULL);
-	}
-	return !strcmp(branch, "then");
+	return false;
 }
 
 static struct output *
@@ -988,7 +955,7 @@ warp_cursor(struct view *view, struct output *output, const char *to, const char
 
 static void
 run_action(struct view *view, struct server *server, struct action *action,
-	struct cursor_context *ctx)
+	struct cursor_context *ctx, bool prompt_rejected)
 {
 	switch (action->type) {
 	case ACTION_TYPE_CLOSE:
@@ -1332,24 +1299,43 @@ run_action(struct view *view, struct server *server, struct action *action,
 		}
 		break;
 	}
-	case ACTION_TYPE_IF:
-		run_if_action(view, server, action);
+	case ACTION_TYPE_IF: {
+		struct wl_list *actions;
+		if (!prompt_rejected && match_queries(view, action)) {
+			actions = action_get_actionlist(action, "then");
+		} else {
+			actions = action_get_actionlist(action, "else");
+		}
+		if (actions) {
+			actions_run(view, server, actions, ctx);
+		}
 		break;
+	}
 	case ACTION_TYPE_FOR_EACH: {
-		struct wl_array views;
-		struct view **item;
+		struct wl_list *actions = NULL;
 		bool matches = false;
+
+		struct wl_array views;
 		wl_array_init(&views);
 		view_array_append(server, &views, LAB_VIEW_CRITERIA_NONE);
+
+		struct view **item;
 		wl_array_for_each(item, &views) {
-			matches |= run_if_action(*item, server, action);
+			if (!prompt_rejected && match_queries(*item, action)) {
+				matches = true;
+				actions = action_get_actionlist(action, "then");
+			} else {
+				actions = action_get_actionlist(action, "else");
+			}
+			if (actions) {
+				actions_run(*item, server, actions, ctx);
+			}
 		}
 		wl_array_release(&views);
 		if (!matches) {
-			struct wl_list *child_actions;
-			child_actions = action_get_actionlist(action, "none");
-			if (child_actions) {
-				actions_run(view, server, child_actions, NULL);
+			actions = action_get_actionlist(action, "none");
+			if (actions) {
+				actions_run(view, server, actions, NULL);
 			}
 		}
 		break;
@@ -1502,6 +1488,16 @@ actions_run(struct view *activator, struct server *server,
 		 */
 		struct view *view = view_for_action(activator, server, action, &ctx);
 
-		run_action(view, server, action, &ctx);
+		if ((action->type == ACTION_TYPE_IF || action->type == ACTION_TYPE_FOR_EACH)
+				&& action_get_str(action, "prompt_text", NULL)) {
+			/*
+			 * Spawn dialog window. run_action() is called in
+			 * action_check_prompt_result() later.
+			 */
+			action_prompt_create(view, server, action);
+			continue;
+		}
+
+		run_action(view, server, action, &ctx, false);
 	}
 }
