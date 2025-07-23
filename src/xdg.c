@@ -790,6 +790,12 @@ xdg_toplevel_view_map(struct view *view)
 	view->been_mapped = true;
 }
 
+static void handle_idle(void *data)
+{
+	struct server *server = data;
+	desktop_arrange_all_views(server);
+}
+
 static void
 xdg_toplevel_view_unmap(struct view *view, bool client_request)
 {
@@ -808,6 +814,8 @@ xdg_toplevel_view_unmap(struct view *view, bool client_request)
 		foreign_toplevel_destroy(view->foreign_toplevel);
 		view->foreign_toplevel = NULL;
 	}
+
+	wl_event_loop_add_idle(view->server->wl_event_loop, handle_idle, view->server);
 }
 
 static pid_t
