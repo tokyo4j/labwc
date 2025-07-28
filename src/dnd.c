@@ -70,8 +70,6 @@ handle_drag_destroy(struct wl_listener *listener, void *data)
 	if (!ctx.surface) {
 		return;
 	}
-	seat_focus_surface(seat, NULL);
-	seat_focus_surface(seat, ctx.surface);
 
 	if (ctx.view && rc.raise_on_focus) {
 		view_move_to_front(ctx.view);
