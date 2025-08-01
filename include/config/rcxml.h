@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <wayland-server-core.h>
+#include <libxml/tree.h>
 
 #include "common/border.h"
 #include "common/buf.h"
@@ -194,5 +195,7 @@ extern struct rcxml rc;
 void rcxml_parse_xml(struct buf *b);
 void rcxml_read(const char *filename);
 void rcxml_finish(void);
+
+void append_actions(xmlNode *node, struct wl_list *list);
 
 #endif /* LABWC_RCXML_H */

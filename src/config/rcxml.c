@@ -253,8 +253,6 @@ set_property(const char *str, enum property *variable)
 	*variable = ret ? LAB_PROP_TRUE : LAB_PROP_FALSE;
 }
 
-static void append_actions(xmlNode *node, struct wl_list *list);
-
 static void
 fill_window_rule(xmlNode *node)
 {
@@ -529,7 +527,7 @@ parse_action(xmlNode *node)
 	return action;
 }
 
-static void
+void
 append_actions(xmlNode *node, struct wl_list *list)
 {
 	xmlNode *child;

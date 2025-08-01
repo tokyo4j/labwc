@@ -26,6 +26,7 @@
 #include "common/scene-helpers.h"
 #include "common/spawn.h"
 #include "common/string-helpers.h"
+#include "common/xml.h"
 #include "labwc.h"
 #include "output.h"
 #include "workspaces.h"
@@ -140,7 +141,7 @@ validate(struct server *server)
 }
 
 static struct menuitem *
-item_create(struct menu *menu, const char *text, bool show_arrow)
+item_create(struct menu *menu, const char *text, bool show_arrow, const char *icon_name)
 {
 	assert(menu);
 	assert(text);
@@ -151,6 +152,10 @@ item_create(struct menu *menu, const char *text, bool show_arrow)
 	menuitem->type = LAB_MENU_ITEM;
 	menuitem->text = xstrdup(text);
 	menuitem->arrow = show_arrow ? "›" : NULL;
+
+	if (HAVE_LIBSFDO && rc.menu_show_icons && icon_name) {
+		menuitem->icon_name = xstrdup(icon_name);
+	}
 
 	menuitem->native_width = font_width(&rc.font_menuitem, text);
 	if (menuitem->arrow) {
@@ -462,45 +467,6 @@ menu_create_scene(struct menu *menu)
 	wlr_scene_node_lower_to_bottom(&bg_rect->tree->node);
 }
 
-/*
- * Handle the following:
- * <item label="">
- *   <action name="">
- *     <command></command>
- *   </action>
- * </item>
- */
-static void
-fill_item(struct menu_parse_context *ctx, const char *nodename,
-		const char *content)
-{
-	/* <item label=""> defines the start of a new item */
-	if (!strcmp(nodename, "label")) {
-		ctx->item = item_create(ctx->menu, content, false);
-		ctx->action = NULL;
-	} else if (!ctx->item) {
-		wlr_log(WLR_ERROR, "expect <item label=\"\"> element first. "
-			"nodename: '%s' content: '%s'", nodename, content);
-	} else if (!strcmp(nodename, "icon")) {
-#if HAVE_LIBSFDO
-		if (rc.menu_show_icons && !string_null_or_empty(content)) {
-			xstrdup_replace(ctx->item->icon_name, content);
-			ctx->menu->has_icons = true;
-		}
-#endif
-	} else if (!strcmp(nodename, "name.action")) {
-		ctx->action = action_create(content);
-		if (ctx->action) {
-			wl_list_append(&ctx->item->actions, &ctx->action->link);
-		}
-	} else if (!ctx->action) {
-		wlr_log(WLR_ERROR, "expect <action name=\"\"> element first. "
-			"nodename: '%s' content: '%s'", nodename, content);
-	} else {
-		action_arg_from_xml_node(ctx->action, nodename, content);
-	}
-}
-
 static void
 item_destroy(struct menuitem *item)
 {
@@ -514,103 +480,30 @@ item_destroy(struct menuitem *item)
 	free(item);
 }
 
-/*
- * We support XML CDATA for <command> in menu.xml in order to provide backward
- * compatibility with obmenu-generator. For example:
- *
- * <menu id="" label="">
- *   <item label="">
- *     <action name="Execute">
- *       <command><![CDATA[xdg-open .]]></command>
- *     </action>
- *   </item>
- * </menu>
- *
- * <execute> is an old, deprecated openbox variety of <command>. We support it
- * for backward compatibility with old openbox-menu generators. It has the same
- * function and <command>
- *
- * The following nodenames support CDATA.
- *  - command.action.item.*menu.openbox_menu
- *  - execute.action.item.*menu.openbox_menu
- *  - command.action.item.openbox_pipe_menu
- *  - execute.action.item.openbox_pipe_menu
- *  - command.action.item.*menu.openbox_pipe_menu
- *  - execute.action.item.*menu.openbox_pipe_menu
- *
- * The *menu allows nested menus with nodenames such as ...menu.menu... or
- * ...menu.menu.menu... and so on. We could use match_glob() for all of the
- * above but it seems simpler to just check the first three fields.
- */
-static bool
-nodename_supports_cdata(char *nodename)
-{
-	return !strncmp("command.action.", nodename, 15)
-		|| !strncmp("execute.action.", nodename, 15);
-}
-
-static void
-entry(struct menu_parse_context *ctx, xmlNode *node, char *nodename,
-		char *content)
-{
-	if (!nodename) {
-		return;
-	}
-	xmlChar *cdata = NULL;
-	if (!content && nodename_supports_cdata(nodename)) {
-		cdata = xmlNodeGetContent(node);
-	}
-	if (!content && !cdata) {
-		return;
-	}
-	string_truncate_at_pattern(nodename, ".openbox_menu");
-	string_truncate_at_pattern(nodename, ".openbox_pipe_menu");
-	if (getenv("LABWC_DEBUG_MENU_NODENAMES")) {
-		printf("%s: %s\n", nodename, content ? content : (char *)cdata);
-	}
-	if (ctx->in_item) {
-		/*
-		 * Nodenames for most menu-items end with '.item.menu'
-		 * but top-level pipemenu items do not have the associated
-		 * <menu> element so merely end with '.item'
-		 */
-		string_truncate_at_pattern(nodename, ".item.menu");
-		string_truncate_at_pattern(nodename, ".item");
-		fill_item(ctx, nodename, content ? content : (char *)cdata);
-	}
-	xmlFree(cdata);
-}
-
-static void
-process_node(struct menu_parse_context *ctx, xmlNode *node)
-{
-	static char buffer[256];
-
-	char *content = (char *)node->content;
-	if (xmlIsBlankNode(node)) {
-		return;
-	}
-	char *name = nodename(node, buffer, sizeof(buffer));
-	entry(ctx, node, name, content);
-}
-
-static void xml_tree_walk(struct menu_parse_context *ctx, xmlNode *node);
-
-static void
-traverse(struct menu_parse_context *ctx, xmlNode *n)
-{
-	xmlAttr *attr;
-
-	process_node(ctx, n);
-	for (attr = n->properties; attr; attr = attr->next) {
-		xml_tree_walk(ctx, attr->children);
-	}
-	xml_tree_walk(ctx, n->children);
-}
-
-static bool parse_buf(struct menu_parse_context *ctx, struct buf *buf);
+static bool parse_buf(struct server *server, struct menu *menu, struct buf *buf);
 static int handle_pipemenu_readable(int fd, uint32_t mask, void *_ctx);
 static int handle_pipemenu_timeout(void *_ctx);
+
+static void
+fill_item(struct server *server, xmlNode *node, struct menu *menu)
+{
+	char *label = (char *)xmlGetProp(node, (xmlChar *)"label");
+	char *icon_name = (char *)xmlGetProp(node, (xmlChar *)"icon");
+	if (!label) {
+		wlr_log(WLR_ERROR, "missing label in <item>");
+		goto out;
+	}
+
+	struct menuitem *item = item_create(menu, (char *)label, false, icon_name);
+	lab_xml_expand_dotted_attributes(node);
+	append_actions(node, &item->actions);
+
+out:
+	free(label);
+	free(icon_name);
+}
+
+static void fill_separator(struct menu *menu, xmlNode *n);
 
 /*
  * <menu> elements have three different roles:
@@ -619,12 +512,13 @@ static int handle_pipemenu_timeout(void *_ctx);
  *  * Menuitem of submenu type - has ID only
  */
 static void
-handle_menu_element(struct menu_parse_context *ctx, xmlNode *n)
+fill_menu(struct server *server, struct menu *parent, xmlNode *n)
 {
 	char *label = (char *)xmlGetProp(n, (const xmlChar *)"label");
 	char *icon_name = (char *)xmlGetProp(n, (const xmlChar *)"icon");
 	char *execute = (char *)xmlGetProp(n, (const xmlChar *)"execute");
 	char *id = (char *)xmlGetProp(n, (const xmlChar *)"id");
+	struct menu *menu = NULL;
 
 	if (!id) {
 		wlr_log(WLR_ERROR, "<menu> without id is not allowed");
@@ -634,10 +528,9 @@ handle_menu_element(struct menu_parse_context *ctx, xmlNode *n)
 	if (execute && label) {
 		wlr_log(WLR_DEBUG, "pipemenu '%s:%s:%s'", id, label, execute);
 
-		struct menu *pipemenu =
-			menu_create(ctx->server, ctx->menu, id, label);
-		pipemenu->execute = xstrdup(execute);
-		if (!ctx->menu) {
+		menu = menu_create(server, parent, id, label);
+		menu->execute = xstrdup(execute);
+		if (!parent) {
 			/*
 			 * A pipemenu may not have its parent like:
 			 *
@@ -647,18 +540,16 @@ handle_menu_element(struct menu_parse_context *ctx, xmlNode *n)
 			 * </openbox_menu>
 			 */
 		} else {
-			ctx->item = item_create(ctx->menu, label,
-				/* arrow */ true);
-			fill_item(ctx, "icon", icon_name);
-			ctx->action = NULL;
-			ctx->item->submenu = pipemenu;
+			struct menuitem *item = item_create(parent, label,
+				/* arrow */ true, icon_name);
+			item->submenu = menu;
 		}
-	} else if ((label && ctx->menu) || !ctx->menu) {
+	} else if ((label && parent) || !parent) {
 		/*
-		 * (label && ctx->menu) refers to <menu id="" label="">
+		 * (label && parent) refers to <menu id="" label="">
 		 * which is an nested (inline) menu definition.
 		 *
-		 * (!ctx->menu) catches:
+		 * (!parent) catches:
 		 *     <openbox_menu>
 		 *       <menu id=""></menu>
 		 *     </openbox_menu>
@@ -674,22 +565,30 @@ handle_menu_element(struct menu_parse_context *ctx, xmlNode *n)
 		 * attribute to make it easier for users to define "root-menu"
 		 * and "client-menu".
 		 */
-		struct menu *parent_menu = ctx->menu;
-		ctx->menu = menu_create(ctx->server, parent_menu, id, label);
+		menu = menu_create(server, parent, id, label);
 		if (icon_name) {
-			ctx->menu->icon_name = xstrdup(icon_name);
+			menu->icon_name = xstrdup(icon_name);
 		}
-		if (label && parent_menu) {
+		if (label && parent) {
 			/*
 			 * In a nested (inline) menu definition we need to
 			 * create an item pointing to the new submenu
 			 */
-			ctx->item = item_create(parent_menu, label, true);
-			fill_item(ctx, "icon", icon_name);
-			ctx->item->submenu = ctx->menu;
+			struct menuitem *item = item_create(parent, label,
+				/*show_arrow*/ true, icon_name);
+			item->submenu = menu;
 		}
-		traverse(ctx, n);
-		ctx->menu = parent_menu;
+		xmlNode *child;
+		char *key, *content;
+		LAB_XML_FOR_EACH(n, child, key, content) {
+			if (!strcasecmp(key, "menu")) {
+				fill_menu(server, menu, child);
+			} else if (!strcasecmp(key, "separator")) {
+				fill_separator(menu, child);
+			} else if (!strcasecmp(key, "item")) {
+				fill_item(server, child, menu);
+			}
+		}
 	} else {
 		/*
 		 * <menu id=""> (when inside another <menu> element) creates an
@@ -706,13 +605,13 @@ handle_menu_element(struct menu_parse_context *ctx, xmlNode *n)
 			goto error;
 		}
 
-		struct menu *menu = menu_get_by_id(ctx->server, id);
+		menu = menu_get_by_id(server, id);
 		if (!menu) {
 			wlr_log(WLR_ERROR, "no menu with id '%s'", id);
 			goto error;
 		}
 
-		struct menu *iter = ctx->menu;
+		struct menu *iter = parent;
 		while (iter) {
 			if (iter == menu) {
 				wlr_log(WLR_ERROR, "menus with the same id '%s' "
@@ -722,9 +621,9 @@ handle_menu_element(struct menu_parse_context *ctx, xmlNode *n)
 			iter = iter->parent;
 		}
 
-		ctx->item = item_create(ctx->menu, menu->label, true);
-		fill_item(ctx, "icon", menu->icon_name);
-		ctx->item->submenu = menu;
+		struct menuitem *item = item_create(parent, menu->label,
+			/*show_arrow*/ true, parent->icon_name);
+		item->submenu = menu;
 	}
 error:
 	free(label);
@@ -735,45 +634,15 @@ error:
 
 /* This can be one of <separator> and <separator label=""> */
 static void
-handle_separator_element(struct menu_parse_context *ctx, xmlNode *n)
+fill_separator(struct menu *menu, xmlNode *n)
 {
 	char *label = (char *)xmlGetProp(n, (const xmlChar *)"label");
-	ctx->item = separator_create(ctx->menu, label);
+	separator_create(menu, label);
 	free(label);
 }
 
-static void
-xml_tree_walk(struct menu_parse_context *ctx, xmlNode *node)
-{
-	for (xmlNode *n = node; n && n->name; n = n->next) {
-		if (!strcasecmp((char *)n->name, "comment")) {
-			continue;
-		}
-		if (!strcasecmp((char *)n->name, "menu")) {
-			handle_menu_element(ctx, n);
-			continue;
-		}
-		if (!strcasecmp((char *)n->name, "separator")) {
-			handle_separator_element(ctx, n);
-			continue;
-		}
-		if (!strcasecmp((char *)n->name, "item")) {
-			if (!ctx->menu) {
-				wlr_log(WLR_ERROR,
-					"ignoring <item> without parent <menu>");
-				continue;
-			}
-			ctx->in_item = true;
-			traverse(ctx, n);
-			ctx->in_item = false;
-			continue;
-		}
-		traverse(ctx, n);
-	}
-}
-
 static bool
-parse_buf(struct menu_parse_context *ctx, struct buf *buf)
+parse_buf(struct server *server, struct menu *parent, struct buf *buf)
 {
 	int options = 0;
 	xmlDoc *d = xmlReadMemory(buf->data, buf->len, NULL, NULL, options);
@@ -781,7 +650,17 @@ parse_buf(struct menu_parse_context *ctx, struct buf *buf)
 		wlr_log(WLR_ERROR, "xmlParseMemory()");
 		return false;
 	}
-	xml_tree_walk(ctx, xmlDocGetRootElement(d));
+
+	xmlNode *root = xmlDocGetRootElement(d);
+
+	xmlNode *child;
+	char *key, *content;
+	LAB_XML_FOR_EACH(root, child, key, content) {
+		if (!strcasecmp(key, "menu")) {
+			fill_menu(server, parent, child);
+		}
+	}
+
 	xmlFreeDoc(d);
 	xmlCleanupParser();
 	return true;
@@ -807,8 +686,7 @@ parse_stream(struct server *server, FILE *stream)
 		buf_add(&b, line);
 	}
 	free(line);
-	struct menu_parse_context ctx = {.server = server};
-	parse_buf(&ctx, &b);
+	parse_buf(server, NULL, &b);
 	buf_reset(&b);
 }
 
@@ -952,17 +830,18 @@ update_client_send_to_menu(struct server *server)
 	struct workspace *workspace;
 
 	wl_list_for_each(workspace, &server->workspaces.all, link) {
+		struct buf buf = BUF_INIT;
 		if (workspace == server->workspaces.current) {
-			char *label = strdup_printf(">%s<", workspace->name);
-			ctx.item = item_create(menu, label,
-				/*show arrow*/ false);
-			free(label);
+			buf_add_fmt(&buf, ">%s<", workspace->name);
 		} else {
-			ctx.item = item_create(menu, workspace->name,
-				/*show arrow*/ false);
+			buf_add(&buf, workspace->name);
 		}
-		fill_item(&ctx, "name.action", "SendToDesktop");
-		fill_item(&ctx, "to.action", workspace->name);
+		ctx.item = item_create(menu, buf.data,
+			/*show arrow*/ false, NULL);
+		buf_clear(&buf);
+
+		// fill_item(&ctx, "name.action", "SendToDesktop");
+		// fill_item(&ctx, "to.action", workspace->name);
 	}
 
 	menu_create_scene(menu);
@@ -1015,18 +894,18 @@ update_client_list_combined_menu(struct server *server)
 				buf_add(&buffer, title);
 
 				ctx.item = item_create(menu, buffer.data,
-					/*show arrow*/ false);
+					/*show arrow*/ false, NULL);
 				ctx.item->client_list_view = view;
-				fill_item(&ctx, "name.action", "Focus");
-				fill_item(&ctx, "name.action", "Raise");
+				// fill_item(&ctx, "name.action", "Focus");
+				// fill_item(&ctx, "name.action", "Raise");
 				buf_clear(&buffer);
 				menu->has_icons = true;
 			}
 		}
 		ctx.item = item_create(menu, _("Go there..."),
-			/*show arrow*/ false);
-		fill_item(&ctx, "name.action", "GoToDesktop");
-		fill_item(&ctx, "to.action", workspace->name);
+			/*show arrow*/ false, NULL);
+		// fill_item(&ctx, "name.action", "GoToDesktop");
+		// fill_item(&ctx, "to.action", workspace->name);
 	}
 	buf_reset(&buffer);
 	menu_create_scene(menu);
@@ -1042,16 +921,16 @@ init_rootmenu(struct server *server)
 		struct menu_parse_context ctx = {.server = server};
 		menu = menu_create(server, NULL, "root-menu", "");
 
-		ctx.item = item_create(menu, _("Terminal"), false);
-		fill_item(&ctx, "name.action", "Execute");
-		fill_item(&ctx, "command.action", "lab-sensible-terminal");
+		ctx.item = item_create(menu, _("Terminal"), false, NULL);
+		// fill_item(&ctx, "name.action", "Execute");
+		// fill_item(&ctx, "command.action", "lab-sensible-terminal");
 
 		ctx.item = separator_create(menu, NULL);
 
-		ctx.item = item_create(menu, _("Reconfigure"), false);
-		fill_item(&ctx, "name.action", "Reconfigure");
-		ctx.item = item_create(menu, _("Exit"), false);
-		fill_item(&ctx, "name.action", "Exit");
+		ctx.item = item_create(menu, _("Reconfigure"), false, NULL);
+		// fill_item(&ctx, "name.action", "Reconfigure");
+		ctx.item = item_create(menu, _("Exit"), false, NULL);
+		// fill_item(&ctx, "name.action", "Exit");
 	}
 }
 
@@ -1064,42 +943,42 @@ init_windowmenu(struct server *server)
 	if (!menu) {
 		struct menu_parse_context ctx = {.server = server};
 		menu = menu_create(server, NULL, "client-menu", "");
-		ctx.item = item_create(menu, _("Minimize"), false);
-		fill_item(&ctx, "name.action", "Iconify");
-		ctx.item = item_create(menu, _("Maximize"), false);
-		fill_item(&ctx, "name.action", "ToggleMaximize");
-		ctx.item = item_create(menu, _("Fullscreen"), false);
-		fill_item(&ctx, "name.action", "ToggleFullscreen");
-		ctx.item = item_create(menu, _("Roll Up/Down"), false);
-		fill_item(&ctx, "name.action", "ToggleShade");
-		ctx.item = item_create(menu, _("Decorations"), false);
-		fill_item(&ctx, "name.action", "ToggleDecorations");
-		ctx.item = item_create(menu, _("Always on Top"), false);
-		fill_item(&ctx, "name.action", "ToggleAlwaysOnTop");
+		ctx.item = item_create(menu, _("Minimize"), false, NULL);
+		// fill_item(&ctx, "name.action", "Iconify");
+		ctx.item = item_create(menu, _("Maximize"), false, NULL);
+		// fill_item(&ctx, "name.action", "ToggleMaximize");
+		ctx.item = item_create(menu, _("Fullscreen"), false, NULL);
+		// fill_item(&ctx, "name.action", "ToggleFullscreen");
+		ctx.item = item_create(menu, _("Roll Up/Down"), false, NULL);
+		// fill_item(&ctx, "name.action", "ToggleShade");
+		ctx.item = item_create(menu, _("Decorations"), false, NULL);
+		// fill_item(&ctx, "name.action", "ToggleDecorations");
+		ctx.item = item_create(menu, _("Always on Top"), false, NULL);
+		// fill_item(&ctx, "name.action", "ToggleAlwaysOnTop");
 
 		/* Workspace sub-menu */
 		struct menu *workspace_menu =
 			menu_create(server, NULL, "workspaces", "");
-		ctx.item = item_create(workspace_menu, _("Move Left"), false);
+		ctx.item = item_create(workspace_menu, _("Move Left"), false, NULL);
 		/*
 		 * <action name="SendToDesktop"><follow> is true by default so
 		 * GoToDesktop will be called as part of the action.
 		 */
-		fill_item(&ctx, "name.action", "SendToDesktop");
-		fill_item(&ctx, "to.action", "left");
-		ctx.item = item_create(workspace_menu, _("Move Right"), false);
-		fill_item(&ctx, "name.action", "SendToDesktop");
-		fill_item(&ctx, "to.action", "right");
+		// fill_item(&ctx, "name.action", "SendToDesktop");
+		// fill_item(&ctx, "to.action", "left");
+		ctx.item = item_create(workspace_menu, _("Move Right"), false, NULL);
+		// fill_item(&ctx, "name.action", "SendToDesktop");
+		// fill_item(&ctx, "to.action", "right");
 		ctx.item = separator_create(workspace_menu, "");
 		ctx.item = item_create(workspace_menu,
-			_("Always on Visible Workspace"), false);
-		fill_item(&ctx, "name.action", "ToggleOmnipresent");
+			_("Always on Visible Workspace"), false, NULL);
+		// fill_item(&ctx, "name.action", "ToggleOmnipresent");
 
-		ctx.item = item_create(menu, _("Workspace"), true);
+		ctx.item = item_create(menu, _("Workspace"), true, NULL);
 		ctx.item->submenu = workspace_menu;
 
-		ctx.item = item_create(menu, _("Close"), false);
-		fill_item(&ctx, "name.action", "Close");
+		ctx.item = item_create(menu, _("Close"), false, NULL);
+		// fill_item(&ctx, "name.action", "Close");
 	}
 
 	if (wl_list_length(&rc.workspace_config.workspaces) == 1) {
@@ -1341,11 +1220,7 @@ static void
 create_pipe_menu(struct menu_pipe_context *ctx)
 {
 	struct server *server = ctx->pipemenu->server;
-	struct menu_parse_context parse_ctx = {
-		.server = server,
-		.menu = ctx->pipemenu,
-	};
-	if (!parse_buf(&parse_ctx, &ctx->buf)) {
+	if (!parse_buf(server, ctx->pipemenu, &ctx->buf)) {
 		return;
 	}
 	/* TODO: apply validate() only for generated pipemenus */
