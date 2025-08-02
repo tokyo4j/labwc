@@ -492,7 +492,6 @@ action_arg_from_xml_node(struct action *action, const char *nodename, const char
 		}
 		break;
 	case ACTION_TYPE_IF:
-	case ACTION_TYPE_FOR_EACH:
 		if (!strcmp(argument, "text.prompt")) {
 			action_arg_add_str(action, "prompt_text", content);
 		}
@@ -848,9 +847,6 @@ cleanup:
 	free(command);
 }
 
-static void run_action(struct view *view, struct server *server,
-	struct action *action, struct cursor_context *ctx, bool prompt_accepted);
-
 bool
 action_check_prompt_result(pid_t pid, int exit_code)
 {
@@ -867,8 +863,15 @@ action_check_prompt_result(pid_t pid, int exit_code)
 		 *       and so on and falling back to 'then' and 'else'
 		 *       if not found?
 		 */
-		run_action(prompt->view, prompt->server, prompt->action,
-			NULL, exit_code != 0);
+		struct wl_list *child_actions;
+		if (exit_code == 0) {
+			child_actions = action_get_actionlist(prompt->action, "then");
+		} else {
+			child_actions = action_get_actionlist(prompt->action, "else");
+		}
+		if (child_actions) {
+			actions_run(prompt->view, prompt->server, child_actions, NULL);
+		}
 		action_prompt_destroy(prompt);
 		return true;
 	}
@@ -876,12 +879,11 @@ action_check_prompt_result(pid_t pid, int exit_code)
 }
 
 static bool match_queries(struct view *view, struct action *action) {
+	assert(view);
+
 	struct wl_list *queries = action_get_querylist(action, "query");
 	if (!queries) {
 		return true;
-	}
-	if (!view) {
-		return false;
 	}
 
 	struct view_query *query;
@@ -955,7 +957,7 @@ warp_cursor(struct view *view, struct output *output, const char *to, const char
 
 static void
 run_action(struct view *view, struct server *server, struct action *action,
-	struct cursor_context *ctx, bool prompt_rejected)
+	struct cursor_context *ctx)
 {
 	switch (action->type) {
 	case ACTION_TYPE_CLOSE:
@@ -1300,14 +1302,18 @@ run_action(struct view *view, struct server *server, struct action *action,
 		break;
 	}
 	case ACTION_TYPE_IF: {
-		struct wl_list *actions;
-		if (!prompt_rejected && match_queries(view, action)) {
-			actions = action_get_actionlist(action, "then");
-		} else {
-			actions = action_get_actionlist(action, "else");
-		}
-		if (actions) {
-			actions_run(view, server, actions, ctx);
+		if (action_get_str(action, "prompt_text", NULL)) {
+			action_prompt_create(view, server, action);
+		} else if (view) {
+			struct wl_list *actions;
+			if (match_queries(view, action)) {
+				actions = action_get_actionlist(action, "then");
+			} else {
+				actions = action_get_actionlist(action, "else");
+			}
+			if (actions) {
+				actions_run(view, server, actions, ctx);
+			}
 		}
 		break;
 	}
@@ -1321,7 +1327,7 @@ run_action(struct view *view, struct server *server, struct action *action,
 
 		struct view **item;
 		wl_array_for_each(item, &views) {
-			if (!prompt_rejected && match_queries(*item, action)) {
+			if (match_queries(*item, action)) {
 				matches = true;
 				actions = action_get_actionlist(action, "then");
 			} else {
@@ -1498,6 +1504,6 @@ actions_run(struct view *activator, struct server *server,
 			continue;
 		}
 
-		run_action(view, server, action, &ctx, false);
+		run_action(view, server, action, &ctx);
 	}
 }
