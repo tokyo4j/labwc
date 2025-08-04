@@ -465,8 +465,10 @@ render_to_cairo(cairo_t *cairo, struct nag *nag)
 	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
 	cairo_set_source_u32(cairo, nag->conf->background);
 	cairo_paint(cairo);
+	printf("------------------------------\n");
 
 	uint32_t h = render_message(cairo, nag);
+	printf("render_message() h=%d\n", h);
 	max_height = h > max_height ? h : max_height;
 
 	int x = nag->width - nag->conf->button_margin_right;
@@ -475,17 +477,21 @@ render_to_cairo(cairo_t *cairo, struct nag *nag)
 	struct button *button;
 	wl_list_for_each(button, &nag->buttons, link) {
 		h = render_button(cairo, nag, button, &x);
+		printf("render_button() h=%d\n", h);
 		max_height = h > max_height ? h : max_height;
 		x -= nag->conf->button_gap;
 	}
 
 	if (nag->details.visible) {
 		h = render_detailed(cairo, nag, max_height);
+		printf("render_detailed() h=%d\n", h);
 		max_height = h > max_height ? h : max_height;
 	}
 
 	int border = nag->conf->bar_border_thickness;
+	printf("max_height=%d, nag->height=%d\n", max_height, nag->height);
 	if (max_height > nag->height) {
+		printf("adding border width=%d\n", border);
 		max_height += border;
 	}
 	cairo_set_source_u32(cairo, nag->conf->border_bottom);
@@ -494,6 +500,8 @@ render_to_cairo(cairo_t *cairo, struct nag *nag)
 			nag->width,
 			border);
 	cairo_fill(cairo);
+
+	printf("------------------------------\n");
 
 	return max_height;
 }
@@ -505,6 +513,8 @@ render_frame(struct nag *nag)
 		return;
 	}
 
+	printf("render_frame() %dx%d\n", nag->width, nag->height);
+
 	cairo_surface_t *recorder = cairo_recording_surface_create(
 			CAIRO_CONTENT_COLOR_ALPHA, NULL);
 	cairo_t *cairo = cairo_create(recorder);
@@ -515,6 +525,7 @@ render_frame(struct nag *nag)
 	cairo_restore(cairo);
 	uint32_t height = render_to_cairo(cairo, nag);
 	if (height != nag->height) {
+		printf("height unmatched (%d->%d). starting roundtrip\n", nag->height, height);
 		zwlr_layer_surface_v1_set_size(nag->layer_surface, 0, height);
 		if (nag->details.use_exclusive_zone) {
 			zwlr_layer_surface_v1_set_exclusive_zone(
@@ -523,6 +534,7 @@ render_frame(struct nag *nag)
 		wl_surface_commit(nag->surface);
 		wl_display_roundtrip(nag->display);
 	} else {
+		printf("height matched (%d). updating buffer\n", height);
 		nag->current_buffer = get_next_buffer(nag->shm,
 				nag->buffers,
 				nag->width * nag->scale,
@@ -639,7 +651,9 @@ button_execute(struct nag *nag,
 		nag->run_display = false;
 	} else if (button->type == LABNAG_ACTION_EXPAND) {
 		nag->details.visible = !nag->details.visible;
+		printf("expanding 0\n");
 		render_frame(nag);
+		printf("expanding 1\n");
 	} else {
 		pid_t pid = fork();
 		if (pid < 0) {
@@ -678,6 +692,7 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
 	nag->width = width;
 	nag->height = height;
 	zwlr_layer_surface_v1_ack_configure(surface, serial);
+	printf("got configure. redrawing.\n");
 	render_frame(nag);
 }
 
@@ -825,6 +840,8 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial, ui
 	if (state != WL_POINTER_BUTTON_STATE_PRESSED) {
 		return;
 	}
+
+	printf("button %d\n", state);
 
 	double x = seat->pointer.x;
 	double y = seat->pointer.y;
