@@ -35,6 +35,7 @@ add_project_arguments(cc.get_supported_arguments([
   '-Walloca',
   '-Wunused-macros',
   '-Wshadow',
+  '-ffunction-sections',
 
   '-Wno-unused-parameter',
   '-Wno-expansion-to-defined',
@@ -192,6 +193,10 @@ executable(
   include_directories: [labwc_inc],
   dependencies: labwc_deps,
   install: true,
+  link_args: [
+    '-Wl,--gc-sections',
+    '-Wl,--print-gc-sections',
+  ],
 )
 
 install_data('data/labwc.desktop', install_dir: get_option('datadir') / 'wayland-sessions')
