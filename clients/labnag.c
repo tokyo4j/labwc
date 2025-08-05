@@ -476,7 +476,7 @@ render_to_cairo(cairo_t *cairo, struct nag *nag)
 	x -= nag->conf->button_gap_close;
 
 	struct button *button;
-	wl_list_for_each(button, &nag->buttons, link) {
+	wl_list_for_each_reverse(button, &nag->buttons, link) {
 		h = render_button(cairo, nag, button, &x);
 		max_height = h > max_height ? h : max_height;
 		x -= nag->conf->button_gap;
