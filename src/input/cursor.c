@@ -33,8 +33,6 @@
 #include "menu/menu.h"
 #include "output.h"
 #include "regions.h"
-#include "resistance.h"
-#include "resize-outlines.h"
 #include "ssd.h"
 #include "view.h"
 #include "xwayland.h"
@@ -271,46 +269,8 @@ handle_request_set_primary_selection(struct wl_listener *listener, void *data)
 		event->serial);
 }
 
-static void
-process_cursor_move(struct server *server, uint32_t time)
-{
-	struct view *view = server->grabbed_view;
-
-	int x = server->grab_box.x + (server->seat.cursor->x - server->grab_x);
-	int y = server->grab_box.y + (server->seat.cursor->y - server->grab_y);
-
-	/* Apply resistance for maximized/tiled view */
-	bool needs_untile = resistance_unsnap_apply(view, &x, &y);
-	if (needs_untile) {
-		/*
-		 * When the view needs to be un-tiled, resize it to natural
-		 * geometry while anchoring it to cursor. If the natural
-		 * geometry is unknown (possible with xdg-shell views), then
-		 * we set a size of 0x0 here and determine the correct geometry
-		 * later. See do_late_positioning() in xdg.c.
-		 */
-		struct wlr_box new_geo = {
-			.width = view->natural_geometry.width,
-			.height = view->natural_geometry.height,
-		};
-		interactive_anchor_to_cursor(server, &new_geo);
-		/* Shaded clients will not process resize events until unshaded */
-		view_set_shade(view, false);
-		view_set_untiled(view);
-		view_restore_to(view, new_geo);
-		x = new_geo.x;
-		y = new_geo.y;
-	}
-
-	/* Then apply window & edge resistance */
-	resistance_move_apply(view, &x, &y);
-
-	view_move(view, x, y);
-	overlay_update(&server->seat);
-}
-
-static void
-process_cursor_resize(struct server *server, uint32_t time)
+static bool
+should_skip_resize(struct server *server, uint32_t time)
 {
 	/* Rate-limit resize events respecting monitor refresh rate */
 	static uint32_t last_resize_time = 0;
@@ -328,55 +288,14 @@ process_cursor_resize(struct server *server, uint32_t time)
 		}
 		/* Not caring overflow, but it won't be observable */
 		if (time - last_resize_time < 1000000 / (uint32_t)refresh) {
-			return;
+			return false;
 		}
 	}
 
 	last_resize_time = time;
 	last_resize_view = server->grabbed_view;
 
-	double dx = server->seat.cursor->x - server->grab_x;
-	double dy = server->seat.cursor->y - server->grab_y;
-
-	struct view *view = server->grabbed_view;
-	struct wlr_box new_view_geo = view->current;
-
-	if (server->resize_edges & WLR_EDGE_TOP) {
-		/* Shift y to anchor bottom edge when resizing top */
-		new_view_geo.y = server->grab_box.y + dy;
-		new_view_geo.height = server->grab_box.height - dy;
-	} else if (server->resize_edges & WLR_EDGE_BOTTOM) {
-		new_view_geo.height = server->grab_box.height + dy;
-	}
-
-	if (server->resize_edges & WLR_EDGE_LEFT) {
-		/* Shift x to anchor right edge when resizing left */
-		new_view_geo.x = server->grab_box.x + dx;
-		new_view_geo.width = server->grab_box.width - dx;
-	} else if (server->resize_edges & WLR_EDGE_RIGHT) {
-		new_view_geo.width = server->grab_box.width + dx;
-	}
-
-	resistance_resize_apply(view, &new_view_geo);
-	view_adjust_size(view, &new_view_geo.width, &new_view_geo.height);
-
-	if (server->resize_edges & WLR_EDGE_TOP) {
-		/* After size adjustments, make sure to anchor bottom edge */
-		new_view_geo.y = server->grab_box.y +
-			server->grab_box.height - new_view_geo.height;
-	}
-
-	if (server->resize_edges & WLR_EDGE_LEFT) {
-		/* After size adjustments, make sure to anchor bottom right */
-		new_view_geo.x = server->grab_box.x +
-			server->grab_box.width - new_view_geo.width;
-	}
-
-	if (rc.resize_draw_contents) {
-		view_move_resize(view, new_view_geo);
-	} else {
-		resize_outlines_update(view, new_view_geo);
-	}
+	return true;
 }
 
 void
@@ -602,10 +521,12 @@ cursor_process_motion(struct server *server, uint32_t time, double *sx, double *
 {
 	/* If the mode is non-passthrough, delegate to those functions. */
 	if (server->input_mode == LAB_INPUT_STATE_MOVE) {
-		process_cursor_move(server, time);
+		interactive_process_move(server);
 		return false;
 	} else if (server->input_mode == LAB_INPUT_STATE_RESIZE) {
-		process_cursor_resize(server, time);
+		if (!should_skip_resize(server, time)) {
+			interactive_process_resize(server);
+		}
 		return false;
 	}
 
@@ -1221,9 +1142,6 @@ cursor_finish_button_release(struct seat *seat, uint32_t button)
 
 	if (server->input_mode == LAB_INPUT_STATE_MOVE
 			|| server->input_mode == LAB_INPUT_STATE_RESIZE) {
-		if (resize_outlines_enabled(server->grabbed_view)) {
-			resize_outlines_finish(server->grabbed_view);
-		}
 		/* Exit interactive move/resize mode */
 		interactive_finish(server->grabbed_view);
 		return true;

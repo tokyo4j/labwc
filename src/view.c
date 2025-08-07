@@ -446,32 +446,52 @@ view_edge_invert(enum view_edge edge)
 	}
 }
 
+static bool
+output_has_tiled_view(struct output *output, struct view *self)
+{
+	struct view *view;
+	wl_list_for_each(view, &output->server->views, link) {
+		if (view == self || !output_is_usable(view->output)
+				|| view->output != output) {
+			continue;
+		}
+		if (view->tiled) {
+			return true;
+		}
+	}
+	return false;
+}
+
 struct wlr_box
 view_get_edge_snap_box(struct view *view, struct output *output,
 		enum view_edge edge)
 {
 	struct wlr_box usable = output_usable_area_in_layout_coords(output);
-	int x1 = rc.gap;
-	int y1 = rc.gap;
-	int x2 = usable.width - rc.gap;
-	int y2 = usable.height - rc.gap;
+	if (!output_has_tiled_view(output, view)) {
+		output->edge_snap_center.x = usable.x + usable.width / 2;
+		output->edge_snap_center.y = usable.y + usable.height / 2;
+	}
+	int x1 = usable.x + rc.gap;
+	int y1 = usable.y + rc.gap;
+	int x2 = usable.x + usable.width - rc.gap;
+	int y2 = usable.y + usable.height - rc.gap;
 
 	if (edge & VIEW_EDGE_RIGHT) {
-		x1 = (usable.width + rc.gap) / 2;
+		x1 = output->edge_snap_center.x + rc.gap / 2;
 	}
 	if (edge & VIEW_EDGE_LEFT) {
-		x2 = (usable.width - rc.gap) / 2;
+		x2 = output->edge_snap_center.x - rc.gap / 2;
 	}
 	if (edge & VIEW_EDGE_DOWN) {
-		y1 = (usable.height + rc.gap) / 2;
+		y1 = output->edge_snap_center.y + rc.gap / 2;
 	}
 	if (edge & VIEW_EDGE_UP) {
-		y2 = (usable.height - rc.gap) / 2;
+		y2 = output->edge_snap_center.y - rc.gap / 2;
 	}
 
 	struct wlr_box dst = {
-		.x = x1 + usable.x,
-		.y = y1 + usable.y,
+		.x = x1,
+		.y = y1,
 		.width = x2 - x1,
 		.height = y2 - y1,
 	};
@@ -483,6 +503,10 @@ view_get_edge_snap_box(struct view *view, struct output *output,
 		dst.width -= margin.left + margin.right;
 		dst.height -= margin.top + margin.bottom;
 	}
+
+	/* maybe be empty (e.g. edge_snap_center is close to screen edges) */
+	dst.width = MAX(dst.width, 0);
+	dst.height = MAX(dst.height, 0);
 
 	return dst;
 }
@@ -1272,15 +1296,18 @@ view_apply_region_geometry(struct view *view)
 	view_move_resize(view, geo);
 }
 
-static void
+void
 view_apply_tiled_geometry(struct view *view)
 {
 	assert(view);
 	assert(view->tiled);
 	assert(output_is_usable(view->output));
 
-	view_move_resize(view, view_get_edge_snap_box(view,
-		view->output, view->tiled));
+	struct wlr_box box =
+		view_get_edge_snap_box(view, view->output, view->tiled);
+	if (!wlr_box_empty(&box)) {
+		view_move_resize(view, box);
+	}
 }
 
 static void

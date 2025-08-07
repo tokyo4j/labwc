@@ -49,10 +49,10 @@ resize_outlines_update(struct view *view, struct wlr_box new_geo)
 	resize_indicator_update(view);
 }
 
-void
+struct wlr_box
 resize_outlines_finish(struct view *view)
 {
-	view_move_resize(view, view->resize_outlines.view_geo);
 	wlr_scene_node_set_enabled(
 		&view->resize_outlines.rect->tree->node, false);
+	return view->resize_outlines.view_geo;
 }

@@ -5,7 +5,9 @@
 #include "labwc.h"
 #include "output.h"
 #include "regions.h"
+#include "resistance.h"
 #include "resize-indicator.h"
+#include "resize-outlines.h"
 #include "snap.h"
 #include "view.h"
 #include "window-rules.h"
@@ -51,6 +53,35 @@ interactive_anchor_to_cursor(struct server *server, struct wlr_box *geo)
 
 	geo->x = server->grab_box.x + (server->seat.cursor->x - server->grab_x);
 	geo->y = server->grab_box.y + (server->seat.cursor->y - server->grab_y);
+}
+
+static bool
+resize_keeps_tiled(struct view *view)
+{
+	struct server *server = view->server;
+	uint32_t tile_resizable_edges = 0;
+
+	if (!view->tiled) {
+		return false;
+	}
+
+	if (view->tiled & VIEW_EDGE_LEFT) {
+		tile_resizable_edges |= WLR_EDGE_RIGHT;
+	} else if (view->tiled & VIEW_EDGE_RIGHT) {
+		tile_resizable_edges |= WLR_EDGE_LEFT;
+	}
+	if (view->tiled & VIEW_EDGE_UP) {
+		tile_resizable_edges |= WLR_EDGE_BOTTOM;
+	} else if (view->tiled & VIEW_EDGE_DOWN) {
+		tile_resizable_edges |= WLR_EDGE_TOP;
+	}
+
+	/*
+	 * e.g. when a view is tiled to up-left, resizing to
+	 * right/down/right-down keeps the view tiled
+	 */
+	return (tile_resizable_edges & server->resize_edges)
+		== server->resize_edges;
 }
 
 void
@@ -110,6 +141,8 @@ interactive_begin(struct view *view, enum input_mode mode, uint32_t edges)
 			return;
 		}
 
+		server->resize_edges = edges;
+
 		/*
 		 * Resizing overrides any attempt to restore window
 		 * geometries altered by layout changes.
@@ -121,7 +154,9 @@ interactive_begin(struct view *view, enum input_mode mode, uint32_t edges)
 		 * maximized/tiled state but keep the same geometry as
 		 * the starting point for the resize.
 		 */
-		view_set_untiled(view);
+		if (!resize_keeps_tiled(view)) {
+			view_set_untiled(view);
+		}
 		view_restore_to(view, view->pending);
 		cursor_shape = cursor_get_from_edge(edges);
 		break;
@@ -135,7 +170,6 @@ interactive_begin(struct view *view, enum input_mode mode, uint32_t edges)
 	server->grab_x = seat->cursor->x;
 	server->grab_y = seat->cursor->y;
 	server->grab_box = view->current;
-	server->resize_edges = edges;
 
 	seat_focus_override_begin(seat, mode, cursor_shape);
 
@@ -161,6 +195,136 @@ interactive_begin(struct view *view, enum input_mode mode, uint32_t edges)
 	}
 	if (rc.window_edge_strength) {
 		edges_calculate_visibility(server, view);
+	}
+}
+
+void
+interactive_process_move(struct server *server)
+{
+	struct view *view = server->grabbed_view;
+
+	int x = server->grab_box.x + (server->seat.cursor->x - server->grab_x);
+	int y = server->grab_box.y + (server->seat.cursor->y - server->grab_y);
+
+	/* Apply resistance for maximized/tiled view */
+	bool needs_untile = resistance_unsnap_apply(view, &x, &y);
+	if (needs_untile) {
+		/*
+		 * When the view needs to be un-tiled, resize it to natural
+		 * geometry while anchoring it to cursor. If the natural
+		 * geometry is unknown (possible with xdg-shell views), then
+		 * we set a size of 0x0 here and determine the correct geometry
+		 * later. See do_late_positioning() in xdg.c.
+		 */
+		struct wlr_box new_geo = {
+			.width = view->natural_geometry.width,
+			.height = view->natural_geometry.height,
+		};
+		interactive_anchor_to_cursor(server, &new_geo);
+		/* Shaded clients will not process resize events until unshaded */
+		view_set_shade(view, false);
+		view_set_untiled(view);
+		view_restore_to(view, new_geo);
+		x = new_geo.x;
+		y = new_geo.y;
+	}
+
+	/* Then apply window & edge resistance */
+	resistance_move_apply(view, &x, &y);
+
+	view_move(view, x, y);
+	overlay_update(&server->seat);
+}
+
+static void
+resize_tiled_neighbor_views(struct view *view)
+{
+	struct output *output = view->output;
+	if (!output_is_usable(output)) {
+		wlr_log(WLR_ERROR, "unusable output");
+		return;
+	}
+
+	struct wlr_box geo = view->pending;
+	struct border margin = ssd_get_margin(view->ssd);
+	geo.x -= margin.left;
+	geo.y -= margin.top;
+	geo.width += margin.left + margin.right;
+	geo.height += margin.top + margin.bottom;
+
+	if (view->tiled & VIEW_EDGE_LEFT) {
+		output->edge_snap_center.x = geo.x + geo.width + rc.gap / 2;
+	} else if (view->tiled & VIEW_EDGE_RIGHT) {
+		output->edge_snap_center.x = geo.x - rc.gap / 2;
+	}
+	if (view->tiled & VIEW_EDGE_UP) {
+		output->edge_snap_center.y = geo.y + geo.height + rc.gap / 2;
+	} else if (view->tiled & VIEW_EDGE_DOWN) {
+		output->edge_snap_center.y = geo.y - rc.gap / 2;
+	}
+
+	struct view *neightbor;
+	wl_list_for_each(neightbor, &view->server->views, link) {
+		if (neightbor == view) {
+			continue;
+		}
+		if (neightbor->tiled && neightbor->tiled != VIEW_EDGE_CENTER
+				&& neightbor->output == output) {
+			view_apply_tiled_geometry(neightbor);
+		}
+	}
+}
+
+void
+interactive_process_resize(struct server *server)
+{
+	double dx = server->seat.cursor->x - server->grab_x;
+	double dy = server->seat.cursor->y - server->grab_y;
+
+	struct view *view = server->grabbed_view;
+	struct wlr_box new_view_geo = view->current;
+	bool keep_tiled = resize_keeps_tiled(view);
+
+	if (server->resize_edges & WLR_EDGE_TOP) {
+		/* Shift y to anchor bottom edge when resizing top */
+		new_view_geo.y = server->grab_box.y + dy;
+		new_view_geo.height = server->grab_box.height - dy;
+	} else if (server->resize_edges & WLR_EDGE_BOTTOM) {
+		new_view_geo.height = server->grab_box.height + dy;
+	}
+
+	if (server->resize_edges & WLR_EDGE_LEFT) {
+		/* Shift x to anchor right edge when resizing left */
+		new_view_geo.x = server->grab_box.x + dx;
+		new_view_geo.width = server->grab_box.width - dx;
+	} else if (server->resize_edges & WLR_EDGE_RIGHT) {
+		new_view_geo.width = server->grab_box.width + dx;
+	}
+
+	if (!keep_tiled) {
+		resistance_resize_apply(view, &new_view_geo);
+	}
+	view_adjust_size(view, &new_view_geo.width, &new_view_geo.height);
+
+	if (server->resize_edges & WLR_EDGE_TOP) {
+		/* After size adjustments, make sure to anchor bottom edge */
+		new_view_geo.y = server->grab_box.y +
+			server->grab_box.height - new_view_geo.height;
+	}
+
+	if (server->resize_edges & WLR_EDGE_LEFT) {
+		/* After size adjustments, make sure to anchor bottom right */
+		new_view_geo.x = server->grab_box.x +
+			server->grab_box.width - new_view_geo.width;
+	}
+
+	if (rc.resize_draw_contents) {
+		view_move_resize(view, new_view_geo);
+		if (keep_tiled) {
+			resize_tiled_neighbor_views(view);
+		}
+	} else {
+		resize_outlines_update(view, new_view_geo);
 	}
 }
 
@@ -284,6 +448,14 @@ interactive_finish(struct view *view)
 	if (view->server->input_mode == LAB_INPUT_STATE_MOVE) {
 		if (!snap_to_region(view)) {
 			snap_to_edge(view);
+		}
+	} else if (view->server->input_mode == LAB_INPUT_STATE_RESIZE) {
+		if (resize_outlines_enabled(view)) {
+			struct wlr_box geo = resize_outlines_finish(view);
+			view_move_resize(view, geo);
+			if (resize_keeps_tiled(view)) {
+				resize_tiled_neighbor_views(view);
+			}
 		}
 	}
 

@@ -569,6 +569,8 @@ void view_store_natural_geometry(struct view *view);
  */
 void view_apply_natural_geometry(struct view *view);
 
+void view_apply_tiled_geometry(struct view *view);
+
 /**
  * view_effective_height - effective height of view, with respect to shaded state
  * @view: view for which effective height is desired

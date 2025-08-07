@@ -25,6 +25,10 @@ struct output {
 		struct wlr_scene_tree *tree;
 	} osd_scene;
 
+	struct {
+		int x, y;
+	} edge_snap_center;
+
 	/* In output-relative scene coordinates */
 	struct wlr_box usable_area;
 
