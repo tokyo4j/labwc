@@ -272,7 +272,7 @@ this is for compatibility with Openbox.
 ## WINDOW SWITCHER
 
 ```
-<windowSwitcher show="yes" preview="yes" outlines="yes" allWorkspaces="no">
+<windowSwitcher show="yes" preview="yes" outlines="yes" allWorkspaces="no" style="list">
   <fields>
     <field content="icon" width="5%" />
     <field content="desktop_entry_name" width="30%" />
@@ -281,7 +281,7 @@ this is for compatibility with Openbox.
 </windowSwitcher>
 ```
 
-*<windowSwitcher show="" preview="" outlines="" allWorkspaces="">*
+*<windowSwitcher show="" preview="" outlines="" allWorkspaces="" style="">*
 	*show* [yes|no] Draw the OnScreenDisplay when switching between
 	windows. Default is yes.
 
@@ -295,8 +295,12 @@ this is for compatibility with Openbox.
 	they are on. Default no (that is only windows on the current workspace
 	are shown).
 
+	*style* [list|thumbnail] Configures the style of the OnScreenDisplay.
+	"list" displays window information like icons and titles in a vertical list.
+	"thumbnail" shows window thumbnail, icon and title in grids.
+
 *<windowSwitcher><fields><field content="" width="%">*
-	Define window switcher fields.
+	Define window switcher fields when *<windowSwitcher><style>* is "list".
 
 	*content* defines what the field shows and can be any of:
 
