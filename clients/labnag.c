@@ -471,7 +471,7 @@ render_to_cairo(cairo_t *cairo, struct nag *nag)
 	x -= nag->conf->button_gap_close;
 
 	struct button *button;
-	wl_list_for_each(button, &nag->buttons, link) {
+	wl_list_for_each_reverse(button, &nag->buttons, link) {
 		h = render_button(cairo, nag, button, &x);
 		max_height = h > max_height ? h : max_height;
 		x -= nag->conf->button_gap;
@@ -1454,7 +1454,7 @@ nag_parse_options(int argc, char **argv, struct nag *nag,
 			}
 			button->text = optarg;
 			button->dismiss = c == 'Z';
-			wl_list_insert(&nag->buttons, &button->link);
+			wl_list_insert(nag->buttons.prev, &button->link);
 			break;
 		}
 		case 'd': /* Debug */
