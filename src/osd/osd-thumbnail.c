@@ -7,6 +7,7 @@
 #include "common/array.h"
 #include "common/box.h"
 #include "common/lab-scene-rect.h"
+#include "common/string-helpers.h"
 #include "labwc.h"
 #include "osd.h"
 #include "output.h"
@@ -155,13 +156,12 @@ create_item_scene(struct wlr_scene_tree *parent, struct view *view,
 	}
 
 	/* title */
-	const char *title = view_get_string_prop(view, "title");
-	if (title) {
+	if (!string_null_or_empty(view->title)) {
 		item->normal_title = create_title(item->tree, switcher_theme,
-			title, theme->osd_label_text_color,
+			view->title, theme->osd_label_text_color,
 			theme->osd_bg_color, title_y);
 		item->active_title = create_title(item->tree, switcher_theme,
-			title, theme->osd_label_text_color,
+			view->title, theme->osd_label_text_color,
 			switcher_theme->item_active_bg_color, title_y);
 	}
 
