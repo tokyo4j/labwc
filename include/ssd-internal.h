@@ -183,9 +183,9 @@ struct wlr_buffer;
 struct wlr_scene_tree;
 
 /* SSD internal helpers to create various SSD elements */
-struct ssd_part *add_scene_part(enum ssd_part_type type, struct view *view,
+struct ssd_part *attach_ssd_part(enum ssd_part_type type, struct view *view,
 	struct wlr_scene_node *node);
-struct ssd_part *add_scene_button(struct wl_list *button_parts,
+struct ssd_part *attach_ssd_part_button(struct wl_list *button_parts,
 	enum ssd_part_type type, struct wlr_scene_tree *parent,
 	struct lab_img *imgs[LAB_BS_ALL + 1], int x, int y,
 	struct view *view);

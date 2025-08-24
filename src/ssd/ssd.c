@@ -169,7 +169,7 @@ ssd_create(struct view *view, bool active)
 
 	ssd->view = view;
 	ssd->tree = wlr_scene_tree_create(view->scene_tree);
-	add_scene_part(LAB_SSD_NONE, view, &ssd->tree->node);
+	attach_ssd_part(LAB_SSD_NONE, view, &ssd->tree->node);
 	wlr_scene_node_lower_to_bottom(&ssd->tree->node);
 	ssd->titlebar.height = view->server->theme->titlebar_height;
 	ssd_shadow_create(ssd);

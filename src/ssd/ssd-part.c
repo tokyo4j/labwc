@@ -28,7 +28,7 @@ handle_node_destroy(struct wl_listener *listener, void *data)
  * to is destroyed.
  */
 struct ssd_part *
-add_scene_part(enum ssd_part_type type, struct view *view,
+attach_ssd_part(enum ssd_part_type type, struct view *view,
 		struct wlr_scene_node *node)
 {
 	struct ssd_part *part = znew(*part);
@@ -45,7 +45,7 @@ add_scene_part(enum ssd_part_type type, struct view *view,
 }
 
 struct ssd_part *
-add_scene_button(struct wl_list *button_parts, enum ssd_part_type type,
+attach_ssd_part_button(struct wl_list *button_parts, enum ssd_part_type type,
 		struct wlr_scene_tree *parent,
 		struct lab_img *imgs[LAB_BS_ALL + 1],
 		int x, int y, struct view *view)
@@ -54,7 +54,7 @@ add_scene_button(struct wl_list *button_parts, enum ssd_part_type type,
 	wlr_scene_node_set_position(&root->node, x, y);
 
 	struct ssd_button *button = znew(*button);
-	struct ssd_part *part = add_scene_part(type, view, &root->node);
+	struct ssd_part *part = attach_ssd_part(type, view, &root->node);
 	part->button = button;
 	wl_list_append(button_parts, &part->link);
 

@@ -33,7 +33,7 @@ ssd_titlebar_create(struct ssd *ssd)
 	int corner_width = ssd_get_corner_width();
 
 	ssd->titlebar.tree = wlr_scene_tree_create(ssd->tree);
-	add_scene_part(LAB_SSD_PART_TITLEBAR, view, &ssd->tree->node);
+	attach_ssd_part(LAB_SSD_PART_TITLEBAR, view, &ssd->tree->node);
 
 	enum ssd_active_state active;
 	FOR_EACH_ACTIVE_STATE(active) {
@@ -77,7 +77,7 @@ ssd_titlebar_create(struct ssd *ssd)
 			subtree->tree, theme->titlebar_height,
 			theme->window[active].titlebar_pattern);
 		assert(subtree->title);
-		add_scene_part(LAB_SSD_PART_TITLE,
+		attach_ssd_part(LAB_SSD_PART_TITLE,
 			view, &subtree->title->scene_buffer->node);
 
 		/* Buttons */
@@ -93,7 +93,7 @@ ssd_titlebar_create(struct ssd *ssd)
 		wl_list_for_each(b, &rc.title_buttons_left, link) {
 			struct lab_img **imgs =
 				theme->window[active].button_imgs[b->type];
-			add_scene_button(&subtree->buttons_left, b->type, parent,
+			attach_ssd_part_button(&subtree->buttons_left, b->type, parent,
 				imgs, x, y, view);
 			x += theme->window_button_width + theme->window_button_spacing;
 		}
@@ -103,7 +103,7 @@ ssd_titlebar_create(struct ssd *ssd)
 			x -= theme->window_button_width + theme->window_button_spacing;
 			struct lab_img **imgs =
 				theme->window[active].button_imgs[b->type];
-			add_scene_button(&subtree->buttons_right, b->type, parent,
+			attach_ssd_part_button(&subtree->buttons_right, b->type, parent,
 				imgs, x, y, view);
 		}
 	}
