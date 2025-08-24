@@ -133,7 +133,7 @@ ssd_titlebar_create(struct ssd *ssd)
 }
 
 static void
-update_button_state(struct ssd_button *button, enum lab_button_state state,
+update_button_state(struct ssd_part_button *button, enum lab_button_state state,
 		bool enable)
 {
 	if (enable) {
@@ -176,13 +176,13 @@ set_squared_corners(struct ssd *ssd, bool enable)
 		wlr_scene_node_set_enabled(&subtree->corner_right->node, !enable);
 
 		/* (Un)round the corner buttons */
-		struct ssd_part *part;
-		wl_list_for_each(part, &subtree->buttons_left, link) {
-			update_button_state(part->button, LAB_BS_ROUNDED, !enable);
+		struct ssd_part_button *button;
+		wl_list_for_each(button, &subtree->buttons_left, link) {
+			update_button_state(button, LAB_BS_ROUNDED, !enable);
 			break;
 		}
-		wl_list_for_each(part, &subtree->buttons_right, link) {
-			update_button_state(part->button, LAB_BS_ROUNDED, !enable);
+		wl_list_for_each(button, &subtree->buttons_right, link) {
+			update_button_state(button, LAB_BS_ROUNDED, !enable);
 			break;
 		}
 	}
@@ -195,16 +195,16 @@ set_alt_button_icon(struct ssd *ssd, enum ssd_part_type type, bool enable)
 	FOR_EACH_ACTIVE_STATE(active) {
 		struct ssd_titlebar_subtree *subtree = &ssd->titlebar.subtrees[active];
 
-		struct ssd_part *part;
-		wl_list_for_each(part, &subtree->buttons_left, link) {
-			if (part->type == type) {
-				update_button_state(part->button,
+		struct ssd_part_button *button;
+		wl_list_for_each(button, &subtree->buttons_left, link) {
+			if (button->base.type == type) {
+				update_button_state(button,
 					LAB_BS_TOGGLED, enable);
 			}
 		}
-		wl_list_for_each(part, &subtree->buttons_right, link) {
-			if (part->type == type) {
-				update_button_state(part->button,
+		wl_list_for_each(button, &subtree->buttons_right, link) {
+			if (button->base.type == type) {
+				update_button_state(button,
 					LAB_BS_TOGGLED, enable);
 			}
 		}
@@ -250,16 +250,16 @@ update_visible_buttons(struct ssd *ssd)
 		struct ssd_titlebar_subtree *subtree = &ssd->titlebar.subtrees[active];
 		int button_count = 0;
 
-		struct ssd_part *part;
-		wl_list_for_each(part, &subtree->buttons_left, link) {
-			wlr_scene_node_set_enabled(part->node,
+		struct ssd_part_button *button;
+		wl_list_for_each(button, &subtree->buttons_left, link) {
+			wlr_scene_node_set_enabled(button->base.node,
 				button_count < button_count_left);
 			button_count++;
 		}
 
 		button_count = 0;
-		wl_list_for_each(part, &subtree->buttons_right, link) {
-			wlr_scene_node_set_enabled(part->node,
+		wl_list_for_each(button, &subtree->buttons_right, link) {
+			wlr_scene_node_set_enabled(button->base.node,
 				button_count < button_count_right);
 			button_count++;
 		}
@@ -316,9 +316,9 @@ ssd_titlebar_update(struct ssd *ssd)
 			MAX(width - bg_offset * 2, 0), theme->titlebar_height);
 
 		x = theme->window_titlebar_padding_width;
-		struct ssd_part *part;
-		wl_list_for_each(part, &subtree->buttons_left, link) {
-			wlr_scene_node_set_position(part->node, x, y);
+		struct ssd_part_button *button;
+		wl_list_for_each(button, &subtree->buttons_left, link) {
+			wlr_scene_node_set_position(button->base.node, x, y);
 			x += theme->window_button_width + theme->window_button_spacing;
 		}
 
@@ -327,9 +327,9 @@ ssd_titlebar_update(struct ssd *ssd)
 			x, -rc.theme->border_width);
 
 		x = width - theme->window_titlebar_padding_width + theme->window_button_spacing;
-		wl_list_for_each(part, &subtree->buttons_right, link) {
+		wl_list_for_each(button, &subtree->buttons_right, link) {
 			x -= theme->window_button_width + theme->window_button_spacing;
-			wlr_scene_node_set_position(part->node, x, y);
+			wlr_scene_node_set_position(button->base.node, x, y);
 		}
 	}
 
@@ -418,14 +418,14 @@ get_title_offsets(struct ssd *ssd, int *offset_left, int *offset_right)
 	*offset_left = padding_width;
 	*offset_right = padding_width;
 
-	struct ssd_part *part;
-	wl_list_for_each(part, &subtree->buttons_left, link) {
-		if (part->node->enabled) {
+	struct ssd_part_button *button;
+	wl_list_for_each(button, &subtree->buttons_left, link) {
+		if (button->base.node->enabled) {
 			*offset_left += button_width + button_spacing;
 		}
 	}
-	wl_list_for_each(part, &subtree->buttons_right, link) {
-		if (part->node->enabled) {
+	wl_list_for_each(button, &subtree->buttons_right, link) {
+		if (button->base.node->enabled) {
 			*offset_right += button_width + button_spacing;
 		}
 	}
@@ -494,13 +494,14 @@ void
 ssd_update_button_hover(struct wlr_scene_node *node,
 		struct ssd_hover_state *hover_state)
 {
-	struct ssd_part *part = NULL;
+	struct ssd_part_button *button = NULL;
 
 	if (node && node->data) {
 		struct node_descriptor *desc = node->data;
 		if (desc->type == LAB_NODE_DESC_SSD_PART) {
-			part = node_ssd_part_from_node(node);
-			if (part->button == hover_state->button) {
+			button = button_try_from_ssd_part(
+					node_ssd_part_from_node(node));
+			if (button == hover_state->button) {
 				/* Cursor is still on the same button */
 				return;
 			}
@@ -513,10 +514,10 @@ ssd_update_button_hover(struct wlr_scene_node *node,
 		hover_state->view = NULL;
 		hover_state->button = NULL;
 	}
-	if (part && part->button) {
-		update_button_state(part->button, LAB_BS_HOVERD, true);
-		hover_state->view = part->view;
-		hover_state->button = part->button;
+	if (button) {
+		update_button_state(button, LAB_BS_HOVERD, true);
+		hover_state->view = button->base.view;
+		hover_state->button = button;
 	}
 }
 
