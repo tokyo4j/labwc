@@ -2130,7 +2130,7 @@ view_placement_parse(const char *policy)
 
 void
 view_snap_to_edge(struct view *view, enum lab_edge edge,
-			bool across_outputs, bool store_natural_geometry)
+		bool is_action, bool store_natural_geometry)
 {
 	assert(view);
 
@@ -2146,25 +2146,46 @@ view_snap_to_edge(struct view *view, enum lab_edge edge,
 
 	view_set_shade(view, false);
 
-	if (across_outputs && view->tiled == edge && view->maximized == VIEW_AXIS_NONE) {
-		/* We are already tiled for this edge; try to switch outputs */
-		output = output_get_adjacent(view->output, edge, /* wrap */ false);
+	if (is_action && lab_edge_is_cardinal(edge)
+			&& view->maximized == VIEW_AXIS_NONE) {
+		enum lab_edge invert_edge = lab_edge_invert(edge);
+		enum lab_edge parallel_mask = edge | invert_edge;
+		enum lab_edge parallel_tiled = view->tiled & parallel_mask;
+		enum lab_edge orthogonal_tiled = view->tiled & ~parallel_mask;
 
-		if (!output) {
+		if (parallel_tiled == edge) {
 			/*
-			 * No more output to move to
-			 *
-			 * We re-apply the tiled geometry without changing any
-			 * state because the window might have been moved away
-			 * (and thus got untiled) and then snapped back to the
-			 * original edge.
+			 * e.g. window is tiled to up/upleft/upright and being
+			 * snapped to up again. Then move it to the output
+			 * above and tile it to down/downleft/downright.
 			 */
-			view_apply_tiled_geometry(view);
-			return;
+			output = output_get_adjacent(
+				view->output, edge, /* wrap */ false);
+			if (!output) {
+				/*
+				 * No adjacent output is found. Re-apply the
+				 * tiled geometry because the window might have
+				 * been dragged away (and thus got resized) and
+				 * then snapped back to the original edge.
+				 */
+				view_apply_tiled_geometry(view);
+				return;
+			}
+			edge = view->tiled ^ parallel_mask;
+		} else if (parallel_tiled == invert_edge
+				&& orthogonal_tiled != LAB_EDGE_NONE) {
+			/*
+			 * e.g. window is tiled to downleft/downright and being
+			 * snapped to up. Then tile it to left/right.
+			 */
+			edge = view->tiled & ~parallel_mask;
+		} else if (parallel_tiled == LAB_EDGE_NONE) {
+			/*
+			 * e.g. window is tiled to left/right and being snapped
+			 * to up. Then tile it to downleft/downright.
+			 */
+			edge = view->tiled | edge;
 		}
-
-		/* When switching outputs, jump to the opposite edge */
-		edge = lab_edge_invert(edge);
 	}
 
 	if (view->maximized != VIEW_AXIS_NONE) {
