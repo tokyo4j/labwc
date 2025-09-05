@@ -260,8 +260,7 @@ snap_to_edge(struct view *view)
 		view_maximize(view, VIEW_AXIS_BOTH,
 			/*store_natural_geometry*/ false);
 	} else {
-		view_snap_to_edge(view, edge,
-			/*across_outputs*/ false,
+		view_snap_to_edge(view, edge, /*relative*/ false,
 			/*store_natural_geometry*/ false);
 	}
 

@@ -2126,7 +2126,7 @@ view_placement_parse(const char *policy)
 
 void
 view_snap_to_edge(struct view *view, enum lab_edge edge,
-			bool across_outputs, bool store_natural_geometry)
+		bool relative, bool store_natural_geometry)
 {
 	assert(view);
 
@@ -2142,15 +2142,39 @@ view_snap_to_edge(struct view *view, enum lab_edge edge,
 
 	view_set_shade(view, false);
 
-	if (across_outputs && view->tiled == edge && view->maximized == VIEW_AXIS_NONE) {
-		/* We are already tiled for this edge; try to switch outputs */
-		output = output_get_adjacent(view->output, edge, /* wrap */ false);
-		if (!output) {
-			return;
-		}
+	if (relative && lab_edge_is_cardinal(edge)
+			&& view->maximized == VIEW_AXIS_NONE) {
+		enum lab_edge invert_edge = lab_edge_invert(edge);
+		enum lab_edge parallel_mask = edge | invert_edge;
+		enum lab_edge parallel_tiled = view->tiled & parallel_mask;
+		enum lab_edge orthogonal_tiled = view->tiled & ~parallel_mask;
 
-		/* When switching outputs, jump to the opposite edge */
-		edge = lab_edge_invert(edge);
+		if (parallel_tiled == edge) {
+			/*
+			 * E.g. when window is tiled to up/upleft/upright and
+			 * being snapped to up again, move it to the output
+			 * above and tile it to down/downleft/downright.
+			 */
+			output = output_get_adjacent(view->output, edge,
+				/* wrap */ false);
+			if (!output) {
+				return;
+			}
+			edge = view->tiled ^ parallel_mask;
+		} else if (parallel_tiled == invert_edge
+				&& orthogonal_tiled != LAB_EDGE_NONE) {
+			/*
+			 * E.g. When window is tiled to downleft/downright and
+			 * being snapped to up, tile it to left/right.
+			 */
+			edge = view->tiled & ~parallel_mask;
+		} else if (parallel_tiled == LAB_EDGE_NONE) {
+			/*
+			 * E.g. when window is tiled to left/right and being
+			 * snapped to up, tile it to downleft/downright.
+			 */
+			edge = view->tiled | edge;
+		}
 	}
 
 	if (view->maximized != VIEW_AXIS_NONE) {

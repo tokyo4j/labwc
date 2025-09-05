@@ -337,11 +337,6 @@ action_arg_from_xml_node(struct action *action, const char *nodename, const char
 		}
 		break;
 	case ACTION_TYPE_MOVE_TO_EDGE:
-		if (!strcasecmp(argument, "snapWindows")) {
-			action_arg_add_bool(action, argument, parse_bool(content, true));
-			goto cleanup;
-		}
-		/* Falls through */
 	case ACTION_TYPE_TOGGLE_SNAP_TO_EDGE:
 	case ACTION_TYPE_SNAP_TO_EDGE:
 	case ACTION_TYPE_GROW_TO_EDGE:
@@ -356,6 +351,16 @@ action_arg_from_xml_node(struct action *action, const char *nodename, const char
 			} else {
 				action_arg_add_int(action, argument, edge);
 			}
+			goto cleanup;
+		}
+		if (action->type == ACTION_TYPE_MOVE_TO_EDGE
+				&& !strcasecmp(argument, "snapWindows")) {
+			action_arg_add_bool(action, argument, parse_bool(content, true));
+			goto cleanup;
+		}
+		if (action->type == ACTION_TYPE_SNAP_TO_EDGE
+				&& !strcasecmp(argument, "relative")) {
+			action_arg_add_bool(action, argument, parse_bool(content, true));
 			goto cleanup;
 		}
 		break;
@@ -1031,8 +1036,11 @@ run_action(struct view *view, struct server *server, struct action *action,
 				view_apply_natural_geometry(view);
 				break;
 			}
-			view_snap_to_edge(view, edge,
-				/*across_outputs*/ true,
+			bool relative = false;
+			if (action->type == ACTION_TYPE_SNAP_TO_EDGE) {
+				relative = action_get_bool(action, "relative", true);
+			}
+			view_snap_to_edge(view, edge, relative,
 				/*store_natural_geometry*/ true);
 		}
 		break;
