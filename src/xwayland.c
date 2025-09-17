@@ -709,7 +709,8 @@ handle_map_request(struct wl_listener *listener, void *data)
 	}
 
 	/* Keep the view invisible until actually mapped */
-	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
+	view_update_visibility(view);
+
 	ensure_initial_geometry_and_output(view);
 
 	/*
@@ -847,7 +848,7 @@ xwayland_view_map(struct view *view)
 	handle_map_request(&xwayland_view->map_request, NULL);
 
 	view->mapped = true;
-	wlr_scene_node_set_enabled(&view->scene_tree->node, true);
+	view_update_visibility(view);
 
 	if (view->surface != xwayland_surface->surface) {
 		if (view->surface) {
@@ -928,8 +929,8 @@ xwayland_view_unmap(struct view *view, bool client_request)
 		goto out;
 	}
 	view->mapped = false;
+	view_update_visibility(view);
 	wl_list_remove(&view->commit.link);
-	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
 	view_impl_unmap(view);
 
 	/* Update usable area to account for XWayland "struts" (panels) */
@@ -1091,7 +1092,7 @@ xwayland_view_create(struct server *server,
 	xsurface->data = view;
 
 	view->workspace = server->workspaces.current;
-	view->scene_tree = wlr_scene_tree_create(view->workspace->tree);
+	view->scene_tree = wlr_scene_tree_create(server->view_tree);
 	node_descriptor_create(&view->scene_tree->node,
 		LAB_NODE_VIEW, view, /*data*/ NULL);
 

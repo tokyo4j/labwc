@@ -247,13 +247,7 @@ matches_criteria(struct view *view, enum lab_view_criteria criteria)
 		return false;
 	}
 	if (criteria & LAB_VIEW_CRITERIA_CURRENT_WORKSPACE) {
-		/*
-		 * Always-on-top views are always on the current desktop and are
-		 * special in that they live in a different tree.
-		 */
-		struct server *server = view->server;
-		if (view->scene_tree->node.parent != server->workspaces.current->tree
-				&& !view_is_always_on_top(view)) {
+		if (view->workspace != view->server->workspaces.current) {
 			return false;
 		}
 	}
@@ -1594,9 +1588,8 @@ view_toggle_always_on_top(struct view *view)
 {
 	assert(view);
 	if (view_is_always_on_top(view)) {
-		view->workspace = view->server->workspaces.current;
 		wlr_scene_node_reparent(&view->scene_tree->node,
-			view->workspace->tree);
+			view->server->view_tree);
 	} else {
 		wlr_scene_node_reparent(&view->scene_tree->node,
 			view->server->view_tree_always_on_top);
@@ -1616,9 +1609,8 @@ view_toggle_always_on_bottom(struct view *view)
 {
 	assert(view);
 	if (view_is_always_on_bottom(view)) {
-		view->workspace = view->server->workspaces.current;
 		wlr_scene_node_reparent(&view->scene_tree->node,
-			view->workspace->tree);
+			view->server->view_tree);
 	} else {
 		wlr_scene_node_reparent(&view->scene_tree->node,
 			view->server->view_tree_always_on_bottom);
@@ -1640,8 +1632,7 @@ view_move_to_workspace(struct view *view, struct workspace *workspace)
 	assert(workspace);
 	if (view->workspace != workspace) {
 		view->workspace = workspace;
-		wlr_scene_node_reparent(&view->scene_tree->node,
-			workspace->tree);
+		view_update_visibility(view);
 	}
 }
 
@@ -2390,6 +2381,14 @@ view_update_app_id(struct view *view)
 {
 	assert(view);
 	wl_signal_emit_mutable(&view->events.new_app_id, NULL);
+}
+
+void
+view_update_visibility(struct view *view)
+{
+	bool visible = (view->mapped && view->workspace
+					== view->server->workspaces.current);
+	wlr_scene_node_set_enabled(&view->scene_tree->node, visible);
 }
 
 void

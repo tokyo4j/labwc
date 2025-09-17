@@ -791,6 +791,7 @@ xdg_toplevel_view_map(struct view *view)
 	}
 
 	view->mapped = true;
+	view_update_visibility(view);
 
 	/*
 	 * An output should have been chosen when the surface was first
@@ -800,7 +801,6 @@ xdg_toplevel_view_map(struct view *view)
 		view_set_output(view, output_nearest_to_cursor(view->server));
 	}
 	struct wlr_xdg_surface *xdg_surface = xdg_surface_from_view(view);
-	wlr_scene_node_set_enabled(&view->scene_tree->node, true);
 
 	if (!view->foreign_toplevel) {
 		init_foreign_toplevel(view);
@@ -852,7 +852,7 @@ xdg_toplevel_view_unmap(struct view *view, bool client_request)
 {
 	if (view->mapped) {
 		view->mapped = false;
-		wlr_scene_node_set_enabled(&view->scene_tree->node, false);
+		view_update_visibility(view);
 		view_impl_unmap(view);
 	}
 
@@ -1012,8 +1012,8 @@ handle_new_xdg_toplevel(struct wl_listener *listener, void *data)
 	}
 
 	view->workspace = server->workspaces.current;
-	view->scene_tree = wlr_scene_tree_create(view->workspace->tree);
-	wlr_scene_node_set_enabled(&view->scene_tree->node, false);
+	view->scene_tree = wlr_scene_tree_create(server->view_tree);
+	view_update_visibility(view);
 
 	struct wlr_scene_tree *tree = wlr_scene_xdg_surface_create(
 		view->scene_tree, xdg_surface);

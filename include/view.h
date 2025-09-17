@@ -577,6 +577,7 @@ bool view_has_strut_partial(struct view *view);
 const char *view_get_string_prop(struct view *view, const char *prop);
 void view_update_title(struct view *view);
 void view_update_app_id(struct view *view);
+void view_update_visibility(struct view *view);
 void view_reload_ssd(struct view *view);
 
 void view_set_shade(struct view *view, bool shaded);
