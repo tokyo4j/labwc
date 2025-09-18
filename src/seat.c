@@ -15,6 +15,7 @@
 #include <wlr/types/wlr_virtual_pointer_v1.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/log.h>
+#include "common/list.h"
 #include "common/macros.h"
 #include "common/mem.h"
 #include "config/libinput.h"
@@ -637,6 +638,7 @@ seat_init(struct server *server)
 	wl_list_init(&seat->touch_points);
 	wl_list_init(&seat->constraint_commit.link);
 	wl_list_init(&seat->inputs);
+	wl_list_init(&seat->focused_surfaces);
 
 	CONNECT_SIGNAL(server->backend, seat, new_input);
 	CONNECT_SIGNAL(&seat->seat->keyboard_state, seat, focus_change);
@@ -756,6 +758,73 @@ seat_reconfigure(struct server *server)
 	}
 }
 
+struct focused_surface {
+	struct wlr_surface *surface;
+	struct wl_listener surface_destroy;
+	struct wl_list link;
+};
+
+static void
+handle_focused_surface_destroy(struct wl_listener *listener, void *data)
+{
+	struct focused_surface *focused_surface =
+		wl_container_of(listener, focused_surface, surface_destroy);
+	wl_list_remove(&focused_surface->link);
+	wl_list_remove(&focused_surface->surface_destroy.link);
+	free(focused_surface);
+}
+
+static void
+dump_focused_surface(struct seat *seat)
+{
+	fprintf(stderr, "focused_surfaces=(");
+	struct focused_surface *fsurface;
+	wl_list_for_each(fsurface, &seat->focused_surfaces, link) {
+		struct view *view = view_from_wlr_surface(fsurface->surface);
+		struct wlr_layer_surface_v1 *layer =
+			wlr_layer_surface_v1_try_from_wlr_surface(fsurface->surface);
+		if (view) {
+			fprintf(stderr, "view[%s] ", view->app_id);
+		} else if (layer) {
+			fprintf(stderr, "layer[%s] ", layer->namespace);
+		}
+	}
+	fprintf(stderr, ")\n");
+}
+
+/* Can accept NULL surface */
+static void
+append_focused_surface(struct seat *seat, struct wlr_surface *surface)
+{
+	struct focused_surface *fsurface;
+	wl_list_for_each(fsurface, &seat->focused_surfaces, link) {
+		if (fsurface->surface == surface) {
+			wl_list_remove(&fsurface->link);
+			wl_list_append(&seat->focused_surfaces, &fsurface->link);
+			dump_focused_surface(seat);
+			return;
+		}
+	}
+	fsurface = znew(*fsurface);
+	fsurface->surface = surface;
+	fsurface->surface_destroy.notify = handle_focused_surface_destroy;
+	wl_signal_add(&surface->events.destroy, &fsurface->surface_destroy);
+	wl_list_append(&seat->focused_surfaces, &fsurface->link);
+	dump_focused_surface(seat);
+}
+
+static struct wlr_surface *
+get_last_focused_surface(struct seat *seat)
+{
+	struct focused_surface *fsurface;
+	wl_list_for_each_reverse(fsurface, &seat->focused_surfaces, link) {
+		if (fsurface->surface->mapped) {
+			return fsurface->surface;
+		}
+	}
+	return NULL;
+}
+
 static void
 seat_focus(struct seat *seat, struct wlr_surface *surface,
 		bool replace_exclusive_layer, bool is_lock_surface)
@@ -805,6 +874,8 @@ seat_focus(struct seat *seat, struct wlr_surface *surface,
 	struct wlr_keyboard *kb = &seat->keyboard_group->keyboard;
 	wlr_seat_keyboard_notify_enter(seat->seat, surface,
 		pressed_sent_keycodes, nr_pressed_sent_keycodes, &kb->modifiers);
+
+	append_focused_surface(seat, surface);
 
 	input_method_relay_set_focus(seat->input_method_relay, surface);
 
@@ -906,31 +977,13 @@ seat_output_layout_changed(struct seat *seat)
 	}
 }
 
-static void
-handle_focus_override_surface_destroy(struct wl_listener *listener, void *data)
-{
-	struct seat *seat = wl_container_of(listener, seat,
-		focus_override.surface_destroy);
-	wl_list_remove(&seat->focus_override.surface_destroy.link);
-	seat->focus_override.surface = NULL;
-}
-
 void
 seat_focus_override_begin(struct seat *seat, enum input_mode input_mode,
 	enum lab_cursors cursor_shape)
 {
-	assert(!seat->focus_override.surface);
 	assert(seat->server->input_mode == LAB_INPUT_STATE_PASSTHROUGH);
 
 	seat->server->input_mode = input_mode;
-
-	seat->focus_override.surface = seat->seat->keyboard_state.focused_surface;
-	if (seat->focus_override.surface) {
-		seat->focus_override.surface_destroy.notify =
-			handle_focus_override_surface_destroy;
-		wl_signal_add(&seat->focus_override.surface->events.destroy,
-			&seat->focus_override.surface_destroy);
-	}
 
 	seat_focus(seat, NULL, /*replace_exclusive_layer*/ false,
 		/*is_lock_surface*/ false);
@@ -943,14 +996,11 @@ seat_focus_override_end(struct seat *seat)
 {
 	seat->server->input_mode = LAB_INPUT_STATE_PASSTHROUGH;
 
-	if (seat->focus_override.surface) {
-		if (!seat->seat->keyboard_state.focused_surface) {
-			seat_focus(seat, seat->focus_override.surface,
-				/*replace_exclusive_layer*/ false,
-				/*is_lock_surface*/ false);
-		}
-		wl_list_remove(&seat->focus_override.surface_destroy.link);
-		seat->focus_override.surface = NULL;
+	struct wlr_surface *surface = get_last_focused_surface(seat);
+	if (surface) {
+		seat_focus(seat, surface,
+			/*replace_exclusive_layer*/ false,
+			/*is_lock_surface*/ false);
 	}
 
 	cursor_update_focus(seat->server);

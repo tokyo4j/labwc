@@ -43,15 +43,7 @@ struct seat {
 	} accumulated_scrolls[2]; /* indexed by wl_pointer_axis */
 	bool cursor_scroll_wheel_emulation;
 
-	/*
-	 * The surface whose keyboard focus is temporarily cleared with
-	 * seat_focus_override_begin() and restored with
-	 * seat_focus_override_end().
-	 */
-	struct {
-		struct wlr_surface *surface;
-		struct wl_listener surface_destroy;
-	} focus_override;
+	struct wl_list focused_surfaces;
 
 	struct wlr_pointer_constraint_v1 *current_constraint;
 
