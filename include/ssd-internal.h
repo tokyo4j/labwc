@@ -7,11 +7,6 @@
 #include "theme.h"
 #include "view.h"
 
-struct ssd_state_title_width {
-	int width;
-	bool truncated;
-};
-
 /*
  * The scene-graph of SSD looks like below. The parentheses indicate the
  * type of each node (enum lab_node_type, stored in the node_descriptor
@@ -81,11 +76,11 @@ struct ssd {
 		bool was_squared;
 
 		struct wlr_box geometry;
-		struct ssd_state_title {
-			char *text;
-			/* indexed by enum ssd_active_state */
-			struct ssd_state_title_width dstates[2];
-		} title;
+
+		struct ssd_title_state {
+			int width;
+			bool truncated;
+		} title_states[2]; /* indexed by enum ssd_active_state */
 	} state;
 
 	/* An invisible area around the view which allows resizing */

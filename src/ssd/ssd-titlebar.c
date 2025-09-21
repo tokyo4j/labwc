@@ -344,7 +344,6 @@ ssd_titlebar_destroy(struct ssd *ssd)
 		return;
 	}
 
-	zfree(ssd->state.title.text);
 	wlr_scene_node_destroy(&ssd->titlebar.tree->node);
 	ssd->titlebar = (struct ssd_titlebar_scene){0};
 }
@@ -446,8 +445,6 @@ ssd_update_title(struct ssd *ssd)
 	}
 
 	struct theme *theme = view->server->theme;
-	struct ssd_state_title *state = &ssd->state.title;
-	bool title_unchanged = state->text && !strcmp(title, state->text);
 
 	int offset_left, offset_right;
 	get_title_offsets(ssd, &offset_left, &offset_right);
@@ -456,19 +453,18 @@ ssd_update_title(struct ssd *ssd)
 	enum ssd_active_state active;
 	FOR_EACH_ACTIVE_STATE(active) {
 		struct ssd_titlebar_subtree *subtree = &ssd->titlebar.subtrees[active];
-		struct ssd_state_title_width *dstate = &state->dstates[active];
+		struct ssd_title_state *state = &ssd->state.title_states[active];
 		const float *text_color = theme->window[active].label_text_color;
 		struct font *font = active ?
 			&rc.font_activewindow : &rc.font_inactivewindow;
 
 		if (title_bg_width <= 0) {
-			dstate->truncated = true;
+			state->truncated = true;
 			continue;
 		}
 
-		if (title_unchanged
-				&& !dstate->truncated && dstate->width < title_bg_width) {
-			/* title the same + we don't need to resize title */
+		if (!state->truncated && state->width < title_bg_width) {
+			/* We don't need to resize title */
 			continue;
 		}
 
@@ -478,16 +474,10 @@ ssd_update_title(struct ssd *ssd)
 			text_color, bg_color);
 
 		/* And finally update the cache */
-		dstate->width = subtree->title->width;
-		dstate->truncated = title_bg_width <= dstate->width;
+		state->width = subtree->title->width;
+		state->truncated = title_bg_width <= state->width;
 	}
 
-	if (!title_unchanged) {
-		if (state->text) {
-			free(state->text);
-		}
-		state->text = xstrdup(title);
-	}
 	ssd_update_title_positions(ssd, offset_left, offset_right);
 }
 
