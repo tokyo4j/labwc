@@ -175,21 +175,21 @@ load_button(struct theme *theme, struct button *b, int active)
 	/* PNG */
 	get_button_filename(filename, sizeof(filename), b->name,
 		active ? "-active.png" : "-inactive.png");
-	*img = lab_img_load(LAB_IMG_PNG, filename, rgba);
+	*img = lab_img_load_from_path(LAB_IMG_PNG, filename, rgba);
 
 #if HAVE_RSVG
 	/* SVG */
 	if (!*img) {
 		get_button_filename(filename, sizeof(filename), b->name,
 			active ? "-active.svg" : "-inactive.svg");
-		*img = lab_img_load(LAB_IMG_SVG, filename, rgba);
+		*img = lab_img_load_from_path(LAB_IMG_SVG, filename, rgba);
 	}
 #endif
 
 	/* XBM */
 	if (!*img) {
 		get_button_filename(filename, sizeof(filename), b->name, ".xbm");
-		*img = lab_img_load(LAB_IMG_XBM, filename, rgba);
+		*img = lab_img_load_from_path(LAB_IMG_XBM, filename, rgba);
 	}
 
 	/*
@@ -199,7 +199,7 @@ load_button(struct theme *theme, struct button *b, int active)
 	if (!*img && b->alt_name) {
 		get_button_filename(filename, sizeof(filename),
 			b->alt_name, ".xbm");
-		*img = lab_img_load(LAB_IMG_XBM, filename, rgba);
+		*img = lab_img_load_from_path(LAB_IMG_XBM, filename, rgba);
 	}
 
 	/*

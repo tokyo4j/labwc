@@ -5,6 +5,8 @@
 #include <cairo.h>
 #include <stdbool.h>
 #include <wayland-util.h>
+#include <librsvg/rsvg.h>
+#include "config.h"
 
 enum lab_img_type {
 	LAB_IMG_PNG,
@@ -14,11 +16,18 @@ enum lab_img_type {
 };
 
 struct lab_img {
-	struct wl_array modifiers; /* lab_img_modifier_func_t */
-	struct lab_img_data *data;
+	enum lab_img_type type;
+	/* lab_img_data is refcounted to be shared by multiple lab_imgs */
+	int refcount;
+
+	/* Handler for the loaded image file */
+	struct lab_data_buffer *buffer; /* for PNG/XBM/XPM image */
+#if HAVE_RSVG
+	RsvgHandle *svg; /* for SVG image */
+#endif
 };
 
-struct lab_img *lab_img_load(enum lab_img_type type, const char *path,
+struct lab_img *lab_img_load_from_path(enum lab_img_type type, const char *path,
 	float *xbm_color);
 
 /**
@@ -29,29 +38,6 @@ struct lab_img *lab_img_load(enum lab_img_type type, const char *path,
  * Example bitmap: char button[6] = { 0x3f, 0x3f, 0x21, 0x21, 0x21, 0x3f };
  */
 struct lab_img *lab_img_load_from_bitmap(const char *bitmap, float *rgba);
-
-typedef void (*lab_img_modifier_func_t)(cairo_t *cairo, int w, int h);
-
-/**
- * lab_img_copy() - Copy lab_img
- * @img: source image
- *
- * This function duplicates lab_img, but its internal cache for the image is
- * shared.
- */
-struct lab_img *lab_img_copy(struct lab_img *img);
-
-/**
- * lab_img_add_modifier() - Add a modifier function to lab_img
- * @img: source image
- * @modifier: function that applies modifications to the image.
- * @theme: pointer to theme passed to @modifier.
- *
- * "Modifiers" are functions that perform some additional drawing operation
- * after the image is rendered on a buffer with lab_img_render(). For example,
- * hover effects for window buttons can be drawn over the rendered image.
- */
-void lab_img_add_modifier(struct lab_img *img, lab_img_modifier_func_t modifier);
 
 /**
  * lab_img_render() - Render lab_img to a buffer
@@ -68,10 +54,5 @@ struct lab_data_buffer *lab_img_render(struct lab_img *img,
  * @img: lab_img to destroy
  */
 void lab_img_destroy(struct lab_img *img);
-
-/**
- * lab_img_equal() - Returns true if two images draw the same content
- */
-bool lab_img_equal(struct lab_img *img_a, struct lab_img *img_b);
 
 #endif /* LABWC_IMG_H */
