@@ -864,6 +864,10 @@ print_prompt_command(struct buf *buf, const char *format,
 		case 'b':
 			buf_add_hex_color(buf, theme->osd_bg_color);
 			break;
+		case 'B':
+			buf_add_hex_color(buf,
+				theme->osd_window_switcher_classic.item_active_bg_color);
+			break;
 		case 't':
 			buf_add_hex_color(buf, theme->osd_label_text_color);
 			break;

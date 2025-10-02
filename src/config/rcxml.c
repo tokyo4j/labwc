@@ -1637,9 +1637,12 @@ post_processing(void)
 				"--background-color '%b' "
 				"--text-color '%t' "
 				"--button-border-color '%t' "
+				"--button-active-border-color '%t' "
 				"--border-bottom-color '%t' "
 				"--button-background-color '%b' "
+				"--button-active-background-color '%B' "
 				"--button-text-color '%t' "
+				"--button-active-text-color '%t' "
 				"--border-bottom-size 1 "
 				"--button-border-size 3 "
 				"--timeout 0");
