@@ -104,29 +104,12 @@ desktop_entry_init(struct server *server)
 	 */
 	int load_options = SFDO_ICON_THEME_LOAD_OPTIONS_DEFAULT
 		| SFDO_ICON_THEME_LOAD_OPTION_RELAXED
-		| SFDO_ICON_THEME_LOAD_OPTION_ALLOW_MISSING;
+		| SFDO_ICON_THEME_LOAD_OPTION_ALLOW_MISSING
+		| SFDO_ICON_THEME_LOAD_OPTION_SKIP_INVALID;
 
 	sfdo->icon_theme = sfdo_icon_theme_load(
 		sfdo->icon_ctx,
 		rc.icon_theme_name, load_options);
-	if (!sfdo->icon_theme) {
-		/*
-		 * sfdo_icon_theme_load() falls back to hicolor theme with
-		 * _ALLOW_MISSING flag when the theme is missing, but just
-		 * fails when the theme is invalid.
-		 * So manually call sfdo_icon_theme_load() again here.
-		 */
-		wlr_log(WLR_ERROR, "Failed to load icon theme %s, falling back to 'hicolor'",
-			rc.icon_theme_name);
-
-		if (!debug_libsfdo) {
-			wlr_log(WLR_ERROR, "Further information is available by setting "
-				"the LABWC_DEBUG_LIBSFDO=1 env var before starting labwc");
-		}
-
-		sfdo->icon_theme = sfdo_icon_theme_load(
-			sfdo->icon_ctx, "hicolor", load_options);
-	}
 	if (!sfdo->icon_theme) {
 		goto err_icon_theme;
 	}
