@@ -161,6 +161,8 @@ osd_classic_create(struct output *output, struct wl_array *views)
 		wl_list_append(&output->osd_scene.items, &item->base.link);
 		item->base.view = *view;
 		item->base.tree = wlr_scene_tree_create(output->osd_scene.tree);
+		node_descriptor_create(&item->base.tree->node,
+			LAB_NODE_OSD_ITEM, NULL, item);
 		/*
 		 *    OSD border
 		 * +---------------------------------+

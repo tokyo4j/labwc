@@ -127,6 +127,7 @@ create_item_scene(struct wlr_scene_tree *parent, struct view *view,
 	struct osd_thumbnail_item *item = znew(*item);
 	wl_list_append(&output->osd_scene.items, &item->base.link);
 	struct wlr_scene_tree *tree = wlr_scene_tree_create(parent);
+	node_descriptor_create(&tree->node, LAB_NODE_OSD_ITEM, NULL, item);
 	item->base.tree = tree;
 	item->base.view = view;
 

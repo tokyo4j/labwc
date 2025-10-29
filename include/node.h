@@ -59,4 +59,11 @@ struct menuitem *node_menuitem_from_node(
 struct ssd_button *node_try_ssd_button_from_node(
 	struct wlr_scene_node *wlr_scene_node);
 
+/**
+ * node_osd_item_from_node - return osd item struct from node
+ * @wlr_scene_node: wlr_scene_node from which to return data
+ */
+struct osd_item *node_osd_item_from_node(
+	struct wlr_scene_node *wlr_scene_node);
+
 #endif /* LABWC_NODE_DESCRIPTOR_H */
