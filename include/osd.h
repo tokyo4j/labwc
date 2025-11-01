@@ -73,6 +73,13 @@ bool osd_field_is_valid(struct window_switcher_field *field);
 void osd_field_free(struct window_switcher_field *field);
 
 /* Internal API */
+#define SCROLLBAR_W 10
+
+void osd_scroll_init(struct output *output, int x, int y, int h,
+	int item_height, int nr_cols, int nr_rows, int nr_visible_rows,
+	float *border_color, float *bg_color);
+void osd_scroll_update(struct output *output);
+
 struct osd_item {
 	struct view *view;
 	struct wlr_scene_tree *tree;

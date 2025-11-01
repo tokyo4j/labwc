@@ -102,7 +102,12 @@ osd_classic_create(struct output *output, struct wl_array *views)
 		/* workspace indicator */
 		workspace_name_h = switcher_theme->item_height;
 	}
-	int h = workspace_name_h + nr_views * switcher_theme->item_height + 2 * padding;
+
+	int nr_visible_views = MIN(nr_views,
+		(output_box.height - workspace_name_h - 2 * padding)
+			/ switcher_theme->item_height);
+	int h = workspace_name_h + nr_visible_views * switcher_theme->item_height
+		+ 2 * padding;
 
 	output->osd_scene.tree = wlr_scene_tree_create(output->osd_tree);
 
@@ -159,6 +164,7 @@ osd_classic_create(struct output *output, struct wl_array *views)
 
 	float *active_bg_color = switcher_theme->item_active_bg_color;
 	float *active_border_color = switcher_theme->item_active_border_color;
+	output->osd_scene.items_tree = wlr_scene_tree_create(output->osd_scene.tree);
 
 	/* Draw text for each node */
 	struct view **view;
@@ -166,7 +172,7 @@ osd_classic_create(struct output *output, struct wl_array *views)
 		struct osd_classic_item *item = znew(*item);
 		wl_list_append(&output->osd_scene.items, &item->base.link);
 		item->base.view = *view;
-		item->base.tree = wlr_scene_tree_create(output->osd_scene.tree);
+		item->base.tree = wlr_scene_tree_create(output->osd_scene.items_tree);
 		node_descriptor_create(&item->base.tree->node,
 			LAB_NODE_OSD_ITEM, NULL, item);
 		/*
@@ -219,6 +225,10 @@ osd_classic_create(struct output *output, struct wl_array *views)
 	}
 	buf_reset(&buf);
 
+	osd_scroll_init(output, w - padding - SCROLLBAR_W, padding, h - 2 * padding,
+		switcher_theme->item_height, 1, nr_views, nr_visible_views,
+		active_border_color, active_bg_color);
+
 error:;
 	/* Center OSD */
 	wlr_scene_node_set_position(&output->osd_scene.tree->node,
@@ -229,6 +239,8 @@ error:;
 static void
 osd_classic_update(struct output *output)
 {
+	osd_scroll_update(output);
+
 	struct osd_classic_item *item;
 	wl_list_for_each(item, &output->osd_scene.items, base.link) {
 		bool active = item->base.view == output->server->osd_state.cycle_view;

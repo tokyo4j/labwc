@@ -31,8 +31,9 @@ destroy_osd_scenes(struct server *server)
 		}
 		if (output->osd_scene.tree) {
 			wlr_scene_node_destroy(&output->osd_scene.tree->node);
-			output->osd_scene.tree = NULL;
 		}
+		output->osd_scene = (struct osd_scene) {0};
+		wl_list_init(&output->osd_scene.items);
 	}
 }
 
