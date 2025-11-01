@@ -85,7 +85,7 @@ osd_classic_create(struct output *output, struct wl_array *views)
 		&theme->osd_window_switcher_classic;
 	int padding = theme->osd_border_width + switcher_theme->padding;
 	bool show_workspace = wl_list_length(&rc.workspace_config.workspaces) > 1;
-	const char *workspace_name = server->workspaces.current->name;
+	int nr_views = wl_array_len(views);
 
 	int output_width, output_height;
 	wlr_output_effective_resolution(output->wlr_output,
@@ -95,11 +95,13 @@ osd_classic_create(struct output *output, struct wl_array *views)
 	if (switcher_theme->width_is_percent) {
 		w = output_width * switcher_theme->width / 100;
 	}
-	int h = wl_array_len(views) * switcher_theme->item_height + 2 * padding;
+
+	int workspace_name_h = 0;
 	if (show_workspace) {
 		/* workspace indicator */
-		h += switcher_theme->item_height;
+		workspace_name_h = switcher_theme->item_height;
 	}
+	int h = workspace_name_h + nr_views * switcher_theme->item_height + 2 * padding;
 
 	output->osd_scene.tree = wlr_scene_tree_create(output->osd_tree);
 
@@ -121,6 +123,7 @@ osd_classic_create(struct output *output, struct wl_array *views)
 
 	/* Draw workspace indicator */
 	if (show_workspace) {
+		const char *workspace_name = server->workspaces.current->name;
 		struct font font = rc.font_osd;
 		font.weight = PANGO_WEIGHT_BOLD;
 
@@ -153,6 +156,9 @@ osd_classic_create(struct output *output, struct wl_array *views)
 		goto error;
 	}
 
+	float *active_bg_color = switcher_theme->item_active_bg_color;
+	float *active_border_color = switcher_theme->item_active_border_color;
+
 	/* Draw text for each node */
 	struct view **view;
 	wl_array_for_each(view, views) {
@@ -184,17 +190,13 @@ osd_classic_create(struct output *output, struct wl_array *views)
 		item->active_tree = wlr_scene_tree_create(item->base.tree);
 		wlr_scene_node_set_enabled(&item->active_tree->node, false);
 
-		float *active_bg_color = switcher_theme->item_active_bg_color;
-		float *active_border_color = switcher_theme->item_active_border_color;
-
 		/* Highlight around selected window's item */
 		struct lab_scene_rect_options highlight_opts = {
 			.border_colors = (float *[1]) {active_border_color},
 			.bg_color = active_bg_color,
 			.nr_borders = 1,
 			.border_width = switcher_theme->item_active_border_width,
-			.width = w - 2 * theme->osd_border_width
-				- 2 * switcher_theme->padding,
+			.width = w - 2 * padding,
 			.height = switcher_theme->item_height,
 		};
 		struct lab_scene_rect *highlight_rect = lab_scene_rect_create(
