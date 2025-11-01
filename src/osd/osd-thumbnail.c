@@ -178,9 +178,10 @@ create_item_scene(struct wlr_scene_tree *parent, struct view *view,
 }
 
 static void
-get_items_geometry(struct output *output, struct theme *theme,
-		int nr_thumbs, int *nr_rows, int *nr_cols)
+get_items_geometry(struct output *output, int nr_thumbs,
+		int *nr_cols, int *nr_rows, int *nr_visible_rows)
 {
+	struct theme *theme = output->server->theme;
 	struct window_switcher_thumbnail_theme *switcher_theme =
 		&theme->osd_window_switcher_thumbnail;
 	int output_width, output_height;
@@ -207,31 +208,36 @@ get_items_geometry(struct output *output, struct theme *theme,
 		(*nr_rows)++;
 		*nr_cols = ceilf((float)nr_thumbs / *nr_rows);
 	}
+
+	*nr_visible_rows = MIN(*nr_rows,
+		(output_height - 2 * padding) / switcher_theme->item_height);
 }
 
 static void
 osd_thumbnail_create(struct output *output, struct wl_array *views)
 {
-	assert(!output->osd_scene.tree && wl_list_empty(&output->osd_scene.items));
+	struct osd_scene *scene = &output->osd_scene;
+	assert(!scene->tree && wl_list_empty(&output->osd_scene.items));
 
 	struct theme *theme = output->server->theme;
 	struct window_switcher_thumbnail_theme *switcher_theme =
 		&theme->osd_window_switcher_thumbnail;
 	int padding = theme->osd_border_width + switcher_theme->padding;
 
-	output->osd_scene.tree = wlr_scene_tree_create(output->osd_tree);
+	scene->tree = wlr_scene_tree_create(output->osd_tree);
+	scene->items_tree = wlr_scene_tree_create(scene->tree);
 
 	int nr_views = wl_array_len(views);
 	assert(nr_views > 0);
-	int nr_rows, nr_cols;
-	get_items_geometry(output, theme, nr_views, &nr_rows, &nr_cols);
+	int nr_rows, nr_cols, nr_visible_rows;
+	get_items_geometry(output, nr_views, &nr_cols, &nr_rows, &nr_visible_rows);
 
 	/* items */
 	struct view **view;
 	int index = 0;
 	wl_array_for_each(view, views) {
 		struct osd_thumbnail_item *item = create_item_scene(
-			output->osd_scene.tree, *view, output);
+			scene->items_tree, *view, output);
 		if (!item) {
 			break;
 		}
@@ -241,29 +247,39 @@ osd_thumbnail_create(struct output *output, struct wl_array *views)
 		index++;
 	}
 
+	int items_width = switcher_theme->item_width * nr_cols;
+	int items_height = switcher_theme->item_height * nr_visible_rows;
+
+	osd_scroll_init(output, padding + items_width - SCROLLBAR_W, padding,
+		items_height, switcher_theme->item_height,
+		nr_cols, nr_rows, nr_visible_rows,
+		switcher_theme->item_active_border_color,
+		switcher_theme->item_active_bg_color);
+
 	/* background */
 	struct lab_scene_rect_options bg_opts = {
 		.border_colors = (float *[1]) { theme->osd_border_color },
 		.nr_borders = 1,
 		.border_width = theme->osd_border_width,
 		.bg_color = theme->osd_bg_color,
-		.width = nr_cols * switcher_theme->item_width + 2 * padding,
-		.height = nr_rows * switcher_theme->item_height + 2 * padding,
+		.width = items_width + 2 * padding,
+		.height = items_height + 2 * padding,
 	};
-	struct lab_scene_rect *bg =
-		lab_scene_rect_create(output->osd_scene.tree, &bg_opts);
+	struct lab_scene_rect *bg = lab_scene_rect_create(scene->tree, &bg_opts);
 	wlr_scene_node_lower_to_bottom(&bg->tree->node);
 
 	/* center */
 	struct wlr_box usable = output_usable_area_in_layout_coords(output);
 	int lx = usable.x + (usable.width - bg_opts.width) / 2;
 	int ly = usable.y + (usable.height - bg_opts.height) / 2;
-	wlr_scene_node_set_position(&output->osd_scene.tree->node, lx, ly);
+	wlr_scene_node_set_position(&scene->tree->node, lx, ly);
 }
 
 static void
 osd_thumbnail_update(struct output *output)
 {
+	osd_scroll_update(output);
+
 	struct osd_thumbnail_item *item;
 	wl_list_for_each(item, &output->osd_scene.items, base.link) {
 		bool active = (item->base.view == output->server->osd_state.cycle_view);
