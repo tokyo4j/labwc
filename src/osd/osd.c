@@ -17,6 +17,7 @@
 #include "theme.h"
 #include "view.h"
 
+static bool create_osd(struct server *server);
 static void update_osd(struct server *server);
 
 static void
@@ -126,6 +127,7 @@ osd_on_view_destroy(struct view *view)
 	if (osd_state->cycle_view) {
 		/* Recreate the OSD to reflect the view has now gone. */
 		destroy_osd_scenes(view->server);
+		create_osd(view->server);
 		update_osd(view->server);
 	}
 
@@ -179,15 +181,15 @@ osd_begin(struct server *server, enum lab_cycle_dir direction)
 		return;
 	}
 
+	if (!create_osd(server)) {
+		return;
+	}
 	server->osd_state.cycle_view = get_next_cycle_view(server,
 		server->osd_state.cycle_view, direction);
+	update_osd(server);
 
 	seat_focus_override_begin(&server->seat,
 		LAB_INPUT_STATE_WINDOW_SWITCHER, LAB_CURSOR_DEFAULT);
-	update_osd(server);
-
-	/* Update cursor, in case it is within the area covered by OSD */
-	cursor_update_focus(server);
 }
 
 void
@@ -281,40 +283,52 @@ preview_cycled_view(struct view *view)
 	wlr_scene_node_raise_to_top(osd_state->preview_node);
 }
 
-static void
-update_osd(struct server *server)
+static struct osd_impl *
+get_impl(void)
+{
+	switch (rc.window_switcher.style) {
+	case WINDOW_SWITCHER_CLASSIC:
+		return &osd_classic_impl;
+	case WINDOW_SWITCHER_THUMBNAIL:
+		return &osd_thumbnail_impl;
+	}
+	return NULL;
+}
+
+static bool
+create_osd(struct server *server)
 {
 	struct wl_array views;
 	wl_array_init(&views);
 	view_array_append(server, &views, rc.window_switcher.criteria);
-
-	struct osd_impl *osd_impl = NULL;
-	switch (rc.window_switcher.style) {
-	case WINDOW_SWITCHER_CLASSIC:
-		osd_impl = &osd_classic_impl;
-		break;
-	case WINDOW_SWITCHER_THUMBNAIL:
-		osd_impl = &osd_thumbnail_impl;
-		break;
-	}
-
-	if (!wl_array_len(&views) || !server->osd_state.cycle_view) {
-		osd_finish(server, /*switch_focus*/ false);
-		goto out;
+	if (wl_array_len(&views) <= 0) {
+		wl_array_release(&views);
+		return false;
 	}
 
 	if (rc.window_switcher.show) {
 		/* Display the actual OSD */
 		struct output *output;
 		wl_list_for_each(output, &server->outputs, link) {
-			if (!output_is_usable(output)) {
-				continue;
+			if (output_is_usable(output)) {
+				get_impl()->create(output, &views);
 			}
-			if (!output->osd_scene.tree) {
-				osd_impl->create(output, &views);
-				assert(output->osd_scene.tree);
+		}
+	}
+
+	wl_array_release(&views);
+	return true;
+}
+
+static void
+update_osd(struct server *server)
+{
+	if (rc.window_switcher.show) {
+		struct output *output;
+		wl_list_for_each(output, &server->outputs, link) {
+			if (output->osd_scene.tree) {
+				get_impl()->update(output);
 			}
-			osd_impl->update(output);
 		}
 	}
 
@@ -328,7 +342,4 @@ update_osd(struct server *server)
 			osd_update_preview_outlines(server->osd_state.cycle_view);
 		}
 	}
-
-out:
-	wl_array_release(&views);
 }
