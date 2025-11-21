@@ -269,6 +269,9 @@ struct view {
 		struct wl_signal minimized;
 		struct wl_signal fullscreened;
 		struct wl_signal activated;     /* bool *activated */
+		struct wl_signal set_always_on_top;
+		struct wl_signal set_sticky;
+		struct wl_signal set_shaded;
 		/*
 		 * This is emitted when app_id, or icon set via xdg_toplevel_icon
 		 * is updated. This is listened by scaled_icon_buffer.

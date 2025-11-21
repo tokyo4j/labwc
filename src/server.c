@@ -15,6 +15,7 @@
 #include <wlr/types/wlr_export_dmabuf_v1.h>
 #include <wlr/types/wlr_ext_data_control_v1.h>
 #include <wlr/types/wlr_ext_foreign_toplevel_list_v1.h>
+#include <wlr/types/wlr_ext_foreign_toplevel_state_v1.h>
 #include <wlr/types/wlr_ext_image_capture_source_v1.h>
 #include <wlr/types/wlr_ext_image_copy_capture_v1.h>
 #include <wlr/types/wlr_fixes.h>
@@ -683,6 +684,8 @@ server_init(struct server *server)
 	server->foreign_toplevel_list =
 		wlr_ext_foreign_toplevel_list_v1_create(
 			server->wl_display, LAB_EXT_FOREIGN_TOPLEVEL_LIST_VERSION);
+	server->foreign_toplevel_state =
+		wlr_ext_foreign_toplevel_state_manager_v1_create(server->wl_display, 127, 255);
 
 	wlr_alpha_modifier_v1_create(server->wl_display);
 

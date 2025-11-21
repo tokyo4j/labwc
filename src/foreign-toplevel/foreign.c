@@ -33,6 +33,8 @@ foreign_toplevel_set_parent(struct foreign_toplevel *toplevel, struct foreign_to
 	assert(toplevel);
 	wlr_foreign_toplevel_set_parent(&toplevel->wlr_toplevel,
 		parent ? &parent->wlr_toplevel : NULL);
+	ext_foreign_toplevel_set_parent(&toplevel->ext_toplevel,
+		parent ? &parent->ext_toplevel : NULL);
 }
 
 void
