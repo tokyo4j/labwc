@@ -219,7 +219,7 @@ get_items_geometry(struct output *output, struct theme *theme,
 }
 
 static void
-switcher_osd_thumbnail_create(struct output *output, struct wl_array *views)
+switcher_osd_thumbnail_create(struct output *output)
 {
 	assert(!output->switcher_osd.tree && wl_list_empty(&output->switcher_osd.items));
 
@@ -228,6 +228,7 @@ switcher_osd_thumbnail_create(struct output *output, struct wl_array *views)
 	struct window_switcher_thumbnail_theme *switcher_theme =
 		&theme->osd_window_switcher_thumbnail;
 	int padding = theme->osd_border_width + switcher_theme->padding;
+	struct wl_array *views = &output->server->switcher.views;
 
 	output->switcher_osd.tree = wlr_scene_tree_create(output->switcher_osd_tree);
 
@@ -276,14 +277,16 @@ switcher_osd_thumbnail_create(struct output *output, struct wl_array *views)
 static void
 switcher_osd_thumbnail_update(struct output *output)
 {
+	int idx = 0;
 	struct switcher_osd_thumbnail_item *item;
 	wl_list_for_each(item, &output->switcher_osd.items, base.link) {
-		bool active = (item->base.view == output->server->switcher.cycle_view);
+		bool active = (idx == output->server->switcher.cycle_idx);
 		wlr_scene_node_set_enabled(&item->active_bg->tree->node, active);
 		wlr_scene_node_set_enabled(
 			&item->active_label->scene_buffer->node, active);
 		wlr_scene_node_set_enabled(
 			&item->normal_label->scene_buffer->node, !active);
+		idx++;
 	}
 }
 

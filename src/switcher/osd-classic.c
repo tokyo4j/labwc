@@ -76,7 +76,7 @@ create_fields_scene(struct server *server, struct view *view,
 }
 
 static void
-switcher_osd_classic_create(struct output *output, struct wl_array *views)
+switcher_osd_classic_create(struct output *output)
 {
 	assert(!output->switcher_osd.tree && wl_list_empty(&output->switcher_osd.items));
 
@@ -87,6 +87,7 @@ switcher_osd_classic_create(struct output *output, struct wl_array *views)
 	int padding = theme->osd_border_width + switcher_theme->padding;
 	bool show_workspace = wl_list_length(&rc.workspace_config.workspaces) > 1;
 	const char *workspace_name = server->workspaces.current->name;
+	struct wl_array *views = &output->server->switcher.views;
 
 	struct wlr_box output_box;
 	wlr_output_layout_get_box(server->output_layout, output->wlr_output,
@@ -226,11 +227,13 @@ error:;
 static void
 switcher_osd_classic_update(struct output *output)
 {
+	int idx = 0;
 	struct switcher_osd_classic_item *item;
 	wl_list_for_each(item, &output->switcher_osd.items, base.link) {
-		bool active = item->base.view == output->server->switcher.cycle_view;
+		bool active = (idx == output->server->switcher.cycle_idx);
 		wlr_scene_node_set_enabled(&item->normal_tree->node, !active);
 		wlr_scene_node_set_enabled(&item->active_tree->node, active);
+		idx++;
 	}
 }
 

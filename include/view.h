@@ -387,15 +387,6 @@ struct view *view_next(struct wl_list *head, struct view *view,
 struct view *view_prev(struct wl_list *head, struct view *view,
 	enum lab_view_criteria criteria);
 
-/*
- * Same as `view_next()` except that they iterate one whole cycle rather than
- * stopping at the list-head
- */
-struct view *view_next_no_head_stop(struct wl_list *head, struct view *from,
-	enum lab_view_criteria criteria);
-struct view *view_prev_no_head_stop(struct wl_list *head, struct view *from,
-	enum lab_view_criteria criteria);
-
 /**
  * view_array_append() - Append views that match criteria to array
  * @server: server context
