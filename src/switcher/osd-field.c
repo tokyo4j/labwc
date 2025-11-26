@@ -9,8 +9,8 @@
 #include "workspaces.h"
 #include "labwc.h"
 #include "desktop-entry.h"
-#include "osd.h"
 #include "output.h"
+#include "switcher.h"
 
 /* includes '%', terminating 's' and NULL byte, 8 is enough for %-9999s */
 #define LAB_FIELD_SINGLE_FMT_MAX_LEN 8

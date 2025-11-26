@@ -30,7 +30,7 @@
 #include "labwc.h"
 #include "layers.h"
 #include "menu/menu.h"
-#include "osd.h"
+#include "switcher.h"
 #include "output.h"
 #include "resistance.h"
 #include "resize-outlines.h"

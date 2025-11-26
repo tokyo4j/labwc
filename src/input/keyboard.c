@@ -16,8 +16,8 @@
 #include "input/key-state.h"
 #include "labwc.h"
 #include "menu/menu.h"
-#include "osd.h"
 #include "session-lock.h"
+#include "switcher.h"
 #include "view.h"
 #include "workspaces.h"
 
