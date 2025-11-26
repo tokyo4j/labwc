@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+/* Implementation of window switcher, including OSD, previews, and outlines */
 #include "switcher.h"
 #include <assert.h>
 #include <wlr/types/wlr_scene.h>
@@ -17,32 +18,32 @@
 #include "theme.h"
 #include "view.h"
 
-static void update_osd(struct server *server);
+static void update_switcher(struct server *server);
 
 static void
 destroy_osd_scenes(struct server *server)
 {
 	struct output *output;
 	wl_list_for_each(output, &server->outputs, link) {
-		struct osd_item *item, *tmp;
-		wl_list_for_each_safe(item, tmp, &output->osd_scene.items, link) {
+		struct switcher_osd_item *item, *tmp;
+		wl_list_for_each_safe(item, tmp, &output->switcher_osd.items, link) {
 			wl_list_remove(&item->link);
 			free(item);
 		}
-		if (output->osd_scene.tree) {
-			wlr_scene_node_destroy(&output->osd_scene.tree->node);
-			output->osd_scene.tree = NULL;
+		if (output->switcher_osd.tree) {
+			wlr_scene_node_destroy(&output->switcher_osd.tree->node);
+			output->switcher_osd.tree = NULL;
 		}
 	}
 }
 
 static void
-osd_update_preview_outlines(struct view *view)
+update_preview_outlines(struct view *view)
 {
 	/* Create / Update preview outline tree */
 	struct server *server = view->server;
 	struct theme *theme = server->theme;
-	struct lab_scene_rect *rect = view->server->osd_state.preview_outline;
+	struct lab_scene_rect *rect = view->server->switcher.preview_outline;
 	if (!rect) {
 		struct lab_scene_rect_options opts = {
 			.border_colors = (float *[3]) {
@@ -55,7 +56,7 @@ osd_update_preview_outlines(struct view *view)
 		};
 		rect = lab_scene_rect_create(&server->scene->tree, &opts);
 		wlr_scene_node_place_above(&rect->tree->node, &server->menu_tree->node);
-		server->osd_state.preview_outline = rect;
+		server->switcher.preview_outline = rect;
 	}
 
 	struct wlr_box geo = ssd_max_extents(view);
@@ -96,125 +97,125 @@ get_next_cycle_view(struct server *server, struct view *start_view,
 }
 
 void
-osd_on_view_destroy(struct view *view)
+switcher_on_view_destroy(struct view *view)
 {
 	assert(view);
-	struct osd_state *osd_state = &view->server->osd_state;
+	struct switcher_state *switcher = &view->server->switcher;
 
 	if (view->server->input_mode != LAB_INPUT_STATE_WINDOW_SWITCHER) {
 		/* OSD not active, no need for clean up */
 		return;
 	}
 
-	if (osd_state->cycle_view == view) {
+	if (switcher->cycle_view == view) {
 		/*
 		 * If we are the current OSD selected view, cycle
 		 * to the next because we are dying.
 		 */
 
 		/* Also resets preview node */
-		osd_state->cycle_view = get_next_cycle_view(view->server,
-			osd_state->cycle_view, LAB_CYCLE_DIR_BACKWARD);
+		switcher->cycle_view = get_next_cycle_view(view->server,
+			switcher->cycle_view, LAB_CYCLE_DIR_BACKWARD);
 
 		/*
 		 * If we cycled back to ourselves, then we have no more windows.
-		 * Just close the OSD for good.
+		 * Just close the switcher for good.
 		 */
-		if (osd_state->cycle_view == view || !osd_state->cycle_view) {
-			/* osd_finish() additionally resets cycle_view to NULL */
-			osd_finish(view->server, /*switch_focus*/ false);
+		if (switcher->cycle_view == view || !switcher->cycle_view) {
+			/* switcher_finish() additionally resets cycle_view to NULL */
+			switcher_finish(view->server, /*switch_focus*/ false);
 		}
 	}
 
-	if (osd_state->cycle_view) {
-		/* Recreate the OSD to reflect the view has now gone. */
+	if (switcher->cycle_view) {
+		/* Recreate the switcher to reflect the view has now gone. */
 		destroy_osd_scenes(view->server);
-		update_osd(view->server);
+		update_switcher(view->server);
 	}
 
 	if (view->scene_tree) {
 		struct wlr_scene_node *node = &view->scene_tree->node;
-		if (osd_state->preview_anchor == node) {
+		if (switcher->preview_anchor == node) {
 			/*
-			 * If we are the anchor for the current OSD selected view,
+			 * If we are the anchor for the current selected view,
 			 * replace the anchor with the node before us.
 			 */
-			osd_state->preview_anchor = lab_wlr_scene_get_prev_node(node);
+			switcher->preview_anchor = lab_wlr_scene_get_prev_node(node);
 		}
 	}
 }
 
 void
-osd_on_cursor_release(struct server *server, struct wlr_scene_node *node)
+switcher_on_cursor_release(struct server *server, struct wlr_scene_node *node)
 {
 	assert(server->input_mode == LAB_INPUT_STATE_WINDOW_SWITCHER);
 
-	struct osd_item *item = node_osd_item_from_node(node);
-	server->osd_state.cycle_view = item->view;
-	osd_finish(server, /*switch_focus*/ true);
+	struct switcher_osd_item *item = node_switcher_osd_item_from_node(node);
+	server->switcher.cycle_view = item->view;
+	switcher_finish(server, /*switch_focus*/ true);
 }
 
 static void
 restore_preview_node(struct server *server)
 {
-	struct osd_state *osd_state = &server->osd_state;
-	if (osd_state->preview_node) {
-		wlr_scene_node_reparent(osd_state->preview_node,
-			osd_state->preview_parent);
+	struct switcher_state *switcher = &server->switcher;
+	if (switcher->preview_node) {
+		wlr_scene_node_reparent(switcher->preview_node,
+			switcher->preview_parent);
 
-		if (osd_state->preview_anchor) {
-			wlr_scene_node_place_above(osd_state->preview_node,
-				osd_state->preview_anchor);
+		if (switcher->preview_anchor) {
+			wlr_scene_node_place_above(switcher->preview_node,
+				switcher->preview_anchor);
 		} else {
 			/* Selected view was the first node */
-			wlr_scene_node_lower_to_bottom(osd_state->preview_node);
+			wlr_scene_node_lower_to_bottom(switcher->preview_node);
 		}
 
 		/* Node was disabled / minimized before, disable again */
-		if (!osd_state->preview_was_enabled) {
-			wlr_scene_node_set_enabled(osd_state->preview_node, false);
+		if (!switcher->preview_was_enabled) {
+			wlr_scene_node_set_enabled(switcher->preview_node, false);
 		}
-		if (osd_state->preview_was_shaded) {
-			struct view *view = node_view_from_node(osd_state->preview_node);
+		if (switcher->preview_was_shaded) {
+			struct view *view = node_view_from_node(switcher->preview_node);
 			view_set_shade(view, true);
 		}
-		osd_state->preview_node = NULL;
-		osd_state->preview_parent = NULL;
-		osd_state->preview_anchor = NULL;
-		osd_state->preview_was_shaded = false;
+		switcher->preview_node = NULL;
+		switcher->preview_parent = NULL;
+		switcher->preview_anchor = NULL;
+		switcher->preview_was_shaded = false;
 	}
 }
 
 void
-osd_begin(struct server *server, enum lab_cycle_dir direction)
+switcher_begin(struct server *server, enum lab_cycle_dir direction)
 {
 	if (server->input_mode != LAB_INPUT_STATE_PASSTHROUGH) {
 		return;
 	}
 
-	server->osd_state.cycle_view = get_next_cycle_view(server,
-		server->osd_state.cycle_view, direction);
+	server->switcher.cycle_view = get_next_cycle_view(server,
+		server->switcher.cycle_view, direction);
 
 	seat_focus_override_begin(&server->seat,
 		LAB_INPUT_STATE_WINDOW_SWITCHER, LAB_CURSOR_DEFAULT);
-	update_osd(server);
+	update_switcher(server);
 
 	/* Update cursor, in case it is within the area covered by OSD */
 	cursor_update_focus(server);
 }
 
 void
-osd_cycle(struct server *server, enum lab_cycle_dir direction)
+switcher_cycle(struct server *server, enum lab_cycle_dir direction)
 {
 	assert(server->input_mode == LAB_INPUT_STATE_WINDOW_SWITCHER);
 
-	server->osd_state.cycle_view = get_next_cycle_view(server,
-		server->osd_state.cycle_view, direction);
-	update_osd(server);
+	server->switcher.cycle_view = get_next_cycle_view(server,
+		server->switcher.cycle_view, direction);
+	update_switcher(server);
 }
 
 void
-osd_finish(struct server *server, bool switch_focus)
+switcher_finish(struct server *server, bool switch_focus)
 {
 	if (server->input_mode != LAB_INPUT_STATE_WINDOW_SWITCHER) {
 		return;
@@ -224,18 +225,18 @@ osd_finish(struct server *server, bool switch_focus)
 	/* FIXME: this sets focus to the old surface even with switch_focus=true */
 	seat_focus_override_end(&server->seat);
 
-	struct view *cycle_view = server->osd_state.cycle_view;
-	server->osd_state.preview_node = NULL;
-	server->osd_state.preview_anchor = NULL;
-	server->osd_state.cycle_view = NULL;
-	server->osd_state.preview_was_shaded = false;
+	struct view *cycle_view = server->switcher.cycle_view;
+	server->switcher.preview_node = NULL;
+	server->switcher.preview_anchor = NULL;
+	server->switcher.cycle_view = NULL;
+	server->switcher.preview_was_shaded = false;
 
 	destroy_osd_scenes(server);
 
-	if (server->osd_state.preview_outline) {
+	if (server->switcher.preview_outline) {
 		/* Destroy the whole multi_rect so we can easily react to new themes */
-		wlr_scene_node_destroy(&server->osd_state.preview_outline->tree->node);
-		server->osd_state.preview_outline = NULL;
+		wlr_scene_node_destroy(&server->switcher.preview_outline->tree->node);
+		server->switcher.preview_outline = NULL;
 	}
 
 	/* Hiding OSD may need a cursor change */
@@ -254,32 +255,32 @@ preview_cycled_view(struct view *view)
 {
 	assert(view);
 	assert(view->scene_tree);
-	struct osd_state *osd_state = &view->server->osd_state;
+	struct switcher_state *switcher = &view->server->switcher;
 
 	/* Move previous selected node back to its original place */
 	restore_preview_node(view->server);
 
 	/* Store some pointers so we can reset the preview later on */
-	osd_state->preview_node = &view->scene_tree->node;
-	osd_state->preview_parent = view->scene_tree->node.parent;
+	switcher->preview_node = &view->scene_tree->node;
+	switcher->preview_parent = view->scene_tree->node.parent;
 
 	/* Remember the sibling right before the selected node */
-	osd_state->preview_anchor = lab_wlr_scene_get_prev_node(
-		osd_state->preview_node);
-	while (osd_state->preview_anchor && !osd_state->preview_anchor->data) {
+	switcher->preview_anchor = lab_wlr_scene_get_prev_node(
+		switcher->preview_node);
+	while (switcher->preview_anchor && !switcher->preview_anchor->data) {
 		/* Ignore non-view nodes */
-		osd_state->preview_anchor = lab_wlr_scene_get_prev_node(
-			osd_state->preview_anchor);
+		switcher->preview_anchor = lab_wlr_scene_get_prev_node(
+			switcher->preview_anchor);
 	}
 
 	/* Store node enabled / minimized state and force-enable if disabled */
-	osd_state->preview_was_enabled = osd_state->preview_node->enabled;
-	if (!osd_state->preview_was_enabled) {
-		wlr_scene_node_set_enabled(osd_state->preview_node, true);
+	switcher->preview_was_enabled = switcher->preview_node->enabled;
+	if (!switcher->preview_was_enabled) {
+		wlr_scene_node_set_enabled(switcher->preview_node, true);
 	}
 	if (rc.window_switcher.unshade && view->shaded) {
 		view_set_shade(view, false);
-		osd_state->preview_was_shaded = true;
+		switcher->preview_was_shaded = true;
 	}
 
 	/*
@@ -287,64 +288,64 @@ preview_cycled_view(struct view *view)
 	 *        Create a permanent server->osd_preview_tree instead that can
 	 *        also be used as parent for the preview outlines.
 	 */
-	wlr_scene_node_reparent(osd_state->preview_node,
+	wlr_scene_node_reparent(switcher->preview_node,
 		view->server->view_tree_always_on_top);
 
 	/* Finally raise selected node to the top */
-	wlr_scene_node_raise_to_top(osd_state->preview_node);
+	wlr_scene_node_raise_to_top(switcher->preview_node);
 }
 
 static void
 update_osd_on_output(struct server *server, struct output *output,
-	struct osd_impl *osd_impl, struct wl_array *views)
+		struct switcher_osd_impl *osd_impl, struct wl_array *views)
 {
 	if (!output_is_usable(output)) {
 		return;
 	}
-	if (!output->osd_scene.tree) {
+	if (!output->switcher_osd.tree) {
 		osd_impl->create(output, views);
-		assert(output->osd_scene.tree);
+		assert(output->switcher_osd.tree);
 	}
 	osd_impl->update(output);
 }
 
 static void
-update_osd(struct server *server)
+update_switcher(struct server *server)
 {
 	struct wl_array views;
 	wl_array_init(&views);
 	view_array_append(server, &views, rc.window_switcher.criteria);
 
-	struct osd_impl *osd_impl = NULL;
+	struct switcher_osd_impl *osd_impl = NULL;
 	switch (rc.window_switcher.style) {
-	case WINDOW_SWITCHER_CLASSIC:
-		osd_impl = &osd_classic_impl;
+	case SWITCHER_OSD_STYLE_CLASSIC:
+		osd_impl = &switcher_osd_classic_impl;
 		break;
-	case WINDOW_SWITCHER_THUMBNAIL:
-		osd_impl = &osd_thumbnail_impl;
+	case SWITCHER_OSD_STYLE_THUMBNAIL:
+		osd_impl = &switcher_osd_thumbnail_impl;
 		break;
 	}
 
-	if (!wl_array_len(&views) || !server->osd_state.cycle_view) {
-		osd_finish(server, /*switch_focus*/ false);
+	if (!wl_array_len(&views) || !server->switcher.cycle_view) {
+		switcher_finish(server, /*switch_focus*/ false);
 		goto out;
 	}
 
 	if (rc.window_switcher.show) {
 		/* Display the actual OSD */
 		switch (rc.window_switcher.output_criteria) {
-		case OSD_OUTPUT_ALL: {
+		case SWITCHER_OSD_OUTPUT_ALL: {
 			struct output *output;
 			wl_list_for_each(output, &server->outputs, link) {
 				update_osd_on_output(server, output, osd_impl, &views);
 			}
 			break;
 		}
-		case OSD_OUTPUT_POINTER:
+		case SWITCHER_OSD_OUTPUT_POINTER:
 			update_osd_on_output(server,
 				output_nearest_to_cursor(server), osd_impl, &views);
 			break;
-		case OSD_OUTPUT_KEYBOARD: {
+		case SWITCHER_OSD_OUTPUT_KEYBOARD: {
 			struct output *output;
 			if (server->active_view) {
 				output = server->active_view->output;
@@ -359,13 +360,13 @@ update_osd(struct server *server)
 	}
 
 	if (rc.window_switcher.preview) {
-		preview_cycled_view(server->osd_state.cycle_view);
+		preview_cycled_view(server->switcher.cycle_view);
 	}
 
 	/* Outline current window */
 	if (rc.window_switcher.outlines) {
-		if (view_is_focusable(server->osd_state.cycle_view)) {
-			osd_update_preview_outlines(server->osd_state.cycle_view);
+		if (view_is_focusable(server->switcher.cycle_view)) {
+			update_preview_outlines(server->switcher.cycle_view);
 		}
 	}
 

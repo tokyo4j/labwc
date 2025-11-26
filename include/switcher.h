@@ -14,7 +14,7 @@ enum lab_cycle_dir {
 };
 
 /* TODO: add field with keyboard layout? */
-enum window_switcher_field_content {
+enum switcher_osd_field_content {
 	LAB_FIELD_NONE = 0,
 	LAB_FIELD_TYPE,
 	LAB_FIELD_TYPE_SHORT,
@@ -35,8 +35,8 @@ enum window_switcher_field_content {
 	LAB_FIELD_COUNT
 };
 
-struct window_switcher_field {
-	enum window_switcher_field_content content;
+struct switcher_osd_field {
+	enum switcher_osd_field_content content;
 	int width;
 	char *format;
 	struct wl_list link; /* struct rcxml.window_switcher.fields */
@@ -48,54 +48,54 @@ struct server;
 struct wlr_scene_node;
 
 /* Begin window switcher */
-void osd_begin(struct server *server, enum lab_cycle_dir direction);
+void switcher_begin(struct server *server, enum lab_cycle_dir direction);
 
 /* Cycle the selected view in the window switcher */
-void osd_cycle(struct server *server, enum lab_cycle_dir direction);
+void switcher_cycle(struct server *server, enum lab_cycle_dir direction);
 
-/* Closes the OSD */
-void osd_finish(struct server *server, bool switch_focus);
+/* Closes the window switcher */
+void switcher_finish(struct server *server, bool switch_focus);
 
-/* Notify OSD about a destroying view */
-void osd_on_view_destroy(struct view *view);
+/* Notify window switcher about a destroying view */
+void switcher_on_view_destroy(struct view *view);
 
-/* Focus the clicked window and close OSD */
-void osd_on_cursor_release(struct server *server, struct wlr_scene_node *node);
+/* Focus the clicked window and close window switcher */
+void switcher_on_cursor_release(struct server *server, struct wlr_scene_node *node);
 
-/* Used by osd.c internally to render window switcher fields */
-void osd_field_get_content(struct window_switcher_field *field,
+/* Used by switcher OSD modules internally to render window switcher fields */
+void switcher_osd_field_get_content(struct switcher_osd_field *field,
 	struct buf *buf, struct view *view);
 /* Sets view info to buf according to format */
-void osd_field_set_custom(struct buf *buf, struct view *view,
+void switcher_osd_field_set_custom(struct buf *buf, struct view *view,
 	const char *format);
 
 /* Used by rcxml.c when parsing the config */
-void osd_field_arg_from_xml_node(struct window_switcher_field *field,
+void switcher_osd_field_arg_from_xml_node(struct switcher_osd_field *field,
 	const char *nodename, const char *content);
-bool osd_field_is_valid(struct window_switcher_field *field);
-void osd_field_free(struct window_switcher_field *field);
+bool switcher_osd_field_is_valid(struct switcher_osd_field *field);
+void switcher_osd_field_free(struct switcher_osd_field *field);
 
 /* Internal API */
-struct osd_item {
+struct switcher_osd_item {
 	struct view *view;
 	struct wlr_scene_tree *tree;
 	struct wl_list link;
 };
 
-struct osd_impl {
+struct switcher_osd_impl {
 	/*
-	 * Create a scene-tree of OSD for an output.
-	 * This sets output->osd_scene.{items,tree}.
+	 * Create a scene-tree of switcher OSD for an output.
+	 * This sets output->switcher_osd.{items,tree}.
 	 */
 	void (*create)(struct output *output, struct wl_array *views);
 	/*
-	 * Update output->osd_scene.tree to highlight
-	 * server->osd_state.cycle_view.
+	 * Update output->switcher_osd.tree to highlight
+	 * server->switcher.cycle_view.
 	 */
 	void (*update)(struct output *output);
 };
 
-extern struct osd_impl osd_classic_impl;
-extern struct osd_impl osd_thumbnail_impl;
+extern struct switcher_osd_impl switcher_osd_classic_impl;
+extern struct switcher_osd_impl switcher_osd_thumbnail_impl;
 
 #endif // LABWC_SWITCHER_H

@@ -1158,8 +1158,8 @@ cursor_process_button_release(struct seat *seat, uint32_t button,
 		return notify;
 	}
 	if (server->input_mode == LAB_INPUT_STATE_WINDOW_SWITCHER) {
-		if (ctx.type == LAB_NODE_OSD_ITEM) {
-			osd_on_cursor_release(server, ctx.node);
+		if (ctx.type == LAB_NODE_SWITCHER_OSD_ITEM) {
+			switcher_on_cursor_release(server, ctx.node);
 		}
 		return notify;
 	}
