@@ -303,6 +303,7 @@ struct server {
 	/* Set when in cycle (alt-tab) mode */
 	struct switcher_state {
 		struct view *cycle_view;
+		struct wl_list views;
 		bool preview_was_shaded;
 		bool preview_was_enabled;
 		struct wlr_scene_node *preview_node;

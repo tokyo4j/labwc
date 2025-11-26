@@ -87,7 +87,7 @@ struct switcher_osd_impl {
 	 * Create a scene-tree of switcher OSD for an output.
 	 * This sets output->switcher_osd.{items,tree}.
 	 */
-	void (*create)(struct output *output, struct wl_array *views);
+	void (*create)(struct output *output);
 	/*
 	 * Update output->switcher_osd.tree to highlight
 	 * server->switcher.cycle_view.
