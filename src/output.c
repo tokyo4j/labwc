@@ -182,7 +182,7 @@ handle_output_destroy(struct wl_listener *listener, void *data)
 		wlr_scene_node_destroy(&output->layer_tree[i]->node);
 	}
 	wlr_scene_node_destroy(&output->layer_popup_tree->node);
-	wlr_scene_node_destroy(&output->osd_tree->node);
+	wlr_scene_node_destroy(&output->switcher_osd_tree->node);
 	wlr_scene_node_destroy(&output->session_lock_tree->node);
 	if (output->workspace_osd) {
 		wlr_scene_node_destroy(&output->workspace_osd->node);
@@ -500,7 +500,7 @@ handle_new_output(struct wl_listener *listener, void *data)
 	wl_signal_add(&wlr_output->events.request_state, &output->request_state);
 
 	wl_list_init(&output->regions);
-	wl_list_init(&output->osd_scene.items);
+	wl_list_init(&output->switcher_osd.items);
 
 	/*
 	 * Create layer-trees (background, bottom, top and overlay) and
@@ -511,7 +511,7 @@ handle_new_output(struct wl_listener *listener, void *data)
 			wlr_scene_tree_create(&server->scene->tree);
 	}
 	output->layer_popup_tree = wlr_scene_tree_create(&server->scene->tree);
-	output->osd_tree = wlr_scene_tree_create(&server->scene->tree);
+	output->switcher_osd_tree = wlr_scene_tree_create(&server->scene->tree);
 	output->session_lock_tree = wlr_scene_tree_create(&server->scene->tree);
 
 	/*
@@ -535,7 +535,7 @@ handle_new_output(struct wl_listener *listener, void *data)
 	wlr_scene_node_place_below(&output->layer_tree[3]->node, menu_node);
 	wlr_scene_node_place_below(&output->layer_popup_tree->node, menu_node);
 
-	wlr_scene_node_raise_to_top(&output->osd_tree->node);
+	wlr_scene_node_raise_to_top(&output->switcher_osd_tree->node);
 	wlr_scene_node_raise_to_top(&output->session_lock_tree->node);
 
 	/*

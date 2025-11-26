@@ -2634,7 +2634,7 @@ view_destroy(struct view *view)
 		zfree(view->tiled_region_evacuate);
 	}
 
-	osd_on_view_destroy(view);
+	switcher_on_view_destroy(view);
 	undecorate(view);
 
 	view_set_icon(view, NULL, NULL);

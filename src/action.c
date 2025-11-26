@@ -1113,16 +1113,16 @@ run_action(struct view *view, struct server *server, struct action *action,
 		break;
 	case ACTION_TYPE_NEXT_WINDOW:
 		if (server->input_mode == LAB_INPUT_STATE_WINDOW_SWITCHER) {
-			osd_cycle(server, LAB_CYCLE_DIR_FORWARD);
+			switcher_cycle(server, LAB_CYCLE_DIR_FORWARD);
 		} else {
-			osd_begin(server, LAB_CYCLE_DIR_FORWARD);
+			switcher_begin(server, LAB_CYCLE_DIR_FORWARD);
 		}
 		break;
 	case ACTION_TYPE_PREVIOUS_WINDOW:
 		if (server->input_mode == LAB_INPUT_STATE_WINDOW_SWITCHER) {
-			osd_cycle(server, LAB_CYCLE_DIR_BACKWARD);
+			switcher_cycle(server, LAB_CYCLE_DIR_BACKWARD);
 		} else {
-			osd_begin(server, LAB_CYCLE_DIR_BACKWARD);
+			switcher_begin(server, LAB_CYCLE_DIR_BACKWARD);
 		}
 		break;
 	case ACTION_TYPE_RECONFIGURE:

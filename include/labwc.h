@@ -301,7 +301,7 @@ struct server {
 	struct wlr_security_context_manager_v1 *security_context_manager_v1;
 
 	/* Set when in cycle (alt-tab) mode */
-	struct osd_state {
+	struct switcher_state {
 		struct view *cycle_view;
 		bool preview_was_shaded;
 		bool preview_was_enabled;
@@ -309,7 +309,7 @@ struct server {
 		struct wlr_scene_tree *preview_parent;
 		struct wlr_scene_node *preview_anchor;
 		struct lab_scene_rect *preview_outline;
-	} osd_state;
+	} switcher;
 
 	struct theme *theme;
 

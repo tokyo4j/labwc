@@ -151,7 +151,7 @@ handle_modifiers(struct wl_listener *listener, void *data)
 				should_cancel_cycling_on_next_key_release = true;
 			} else {
 				should_cancel_cycling_on_next_key_release = false;
-				osd_finish(server, /*switch_focus*/ true);
+				switcher_finish(server, /*switch_focus*/ true);
 			}
 		}
 		if (seat->workspace_osd_shown_by_modifier) {
@@ -388,7 +388,7 @@ handle_key_release(struct server *server, uint32_t evdev_keycode)
 	 */
 	if (should_cancel_cycling_on_next_key_release) {
 		should_cancel_cycling_on_next_key_release = false;
-		osd_finish(server, /*switch_focus*/ true);
+		switcher_finish(server, /*switch_focus*/ true);
 	}
 
 	/*
@@ -461,19 +461,19 @@ handle_cycle_view_key(struct server *server, struct keyinfo *keyinfo)
 	for (int i = 0; i < keyinfo->translated.nr_syms; i++) {
 		if (keyinfo->translated.syms[i] == XKB_KEY_Escape) {
 			/* Esc deactivates window switcher */
-			osd_finish(server, /*switch_focus*/ false);
+			switcher_finish(server, /*switch_focus*/ false);
 			return true;
 		}
 		if (keyinfo->translated.syms[i] == XKB_KEY_Up
 				|| keyinfo->translated.syms[i] == XKB_KEY_Left) {
 			/* Up/Left cycles the window backward */
-			osd_cycle(server, LAB_CYCLE_DIR_BACKWARD);
+			switcher_cycle(server, LAB_CYCLE_DIR_BACKWARD);
 			return true;
 		}
 		if (keyinfo->translated.syms[i] == XKB_KEY_Down
 				|| keyinfo->translated.syms[i] == XKB_KEY_Right) {
 			/* Down/Right cycles the window forward */
-			osd_cycle(server, LAB_CYCLE_DIR_FORWARD);
+			switcher_cycle(server, LAB_CYCLE_DIR_FORWARD);
 			return true;
 		}
 	}

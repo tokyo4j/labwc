@@ -107,15 +107,15 @@ enum lab_window_type {
 	LAB_WINDOW_TYPE_LEN
 };
 
-enum window_switcher_style {
-	WINDOW_SWITCHER_CLASSIC,
-	WINDOW_SWITCHER_THUMBNAIL,
+enum switcher_osd_style {
+	SWITCHER_OSD_STYLE_CLASSIC,
+	SWITCHER_OSD_STYLE_THUMBNAIL,
 };
 
-enum osd_output_criteria {
-	OSD_OUTPUT_ALL,
-	OSD_OUTPUT_POINTER,
-	OSD_OUTPUT_KEYBOARD,
+enum switcher_osd_output_criteria {
+	SWITCHER_OSD_OUTPUT_ALL,
+	SWITCHER_OSD_OUTPUT_POINTER,
+	SWITCHER_OSD_OUTPUT_KEYBOARD,
 };
 
 #endif /* LABWC_CONFIG_TYPES_H */
