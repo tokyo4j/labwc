@@ -23,7 +23,7 @@
 #include "labwc.h"
 #include "magnifier.h"
 #include "menu/menu.h"
-#include "osd.h"
+#include "switcher.h"
 #include "output.h"
 #include "output-virtual.h"
 #include "regions.h"

@@ -13,7 +13,7 @@
 #include "config/rcxml.h"
 #include "labwc.h"
 #include "node.h"
-#include "osd.h"
+#include "switcher.h"
 #include "output.h"
 #include "scaled-buffer/scaled-font-buffer.h"
 #include "scaled-buffer/scaled-icon-buffer.h"

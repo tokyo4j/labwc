@@ -19,7 +19,7 @@
 #include "input/keyboard.h"
 #include "labwc.h"
 #include "menu/menu.h"
-#include "osd.h"
+#include "switcher.h"
 #include "output.h"
 #include "placement.h"
 #include "regions.h"

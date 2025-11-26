@@ -30,7 +30,7 @@
 #include "config/tablet-tool.h"
 #include "config/touch.h"
 #include "labwc.h"
-#include "osd.h"
+#include "switcher.h"
 #include "regions.h"
 #include "ssd.h"
 #include "translate.h"
