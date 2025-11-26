@@ -18,6 +18,7 @@
 #include "theme.h"
 #include "view.h"
 
+static bool init_switcher(struct server *server);
 static void update_switcher(struct server *server);
 
 static void
@@ -130,7 +131,9 @@ switcher_on_view_destroy(struct view *view)
 	if (switcher->cycle_view) {
 		/* Recreate the switcher to reflect the view has now gone. */
 		destroy_osd_scenes(view->server);
-		update_switcher(view->server);
+		if (init_switcher(view->server)) {
+			update_switcher(view->server);
+		}
 	}
 
 	if (view->scene_tree) {
@@ -193,6 +196,9 @@ switcher_begin(struct server *server, enum lab_cycle_dir direction)
 		return;
 	}
 
+	if (!init_switcher(server)) {
+		return;
+	}
 	server->switcher.cycle_view = get_next_cycle_view(server,
 		server->switcher.cycle_view, direction);
 
@@ -295,55 +301,42 @@ preview_cycled_view(struct view *view)
 	wlr_scene_node_raise_to_top(switcher->preview_node);
 }
 
-static void
-update_osd_on_output(struct server *server, struct output *output,
-		struct switcher_osd_impl *osd_impl, struct wl_array *views)
+static struct switcher_osd_impl *
+get_impl(void)
 {
-	if (!output_is_usable(output)) {
-		return;
+	switch (rc.window_switcher.style) {
+	case SWITCHER_OSD_STYLE_CLASSIC:
+		return &switcher_osd_classic_impl;
+	case SWITCHER_OSD_STYLE_THUMBNAIL:
+		return &switcher_osd_thumbnail_impl;
 	}
-	if (!output->switcher_osd.tree) {
-		osd_impl->create(output, views);
-		assert(output->switcher_osd.tree);
-	}
-	osd_impl->update(output);
+	return NULL;
 }
 
-static void
-update_switcher(struct server *server)
+static bool
+init_switcher(struct server *server)
 {
 	struct wl_array views;
 	wl_array_init(&views);
 	view_array_append(server, &views, rc.window_switcher.criteria);
-
-	struct switcher_osd_impl *osd_impl = NULL;
-	switch (rc.window_switcher.style) {
-	case SWITCHER_OSD_STYLE_CLASSIC:
-		osd_impl = &switcher_osd_classic_impl;
-		break;
-	case SWITCHER_OSD_STYLE_THUMBNAIL:
-		osd_impl = &switcher_osd_thumbnail_impl;
-		break;
-	}
-
-	if (!wl_array_len(&views) || !server->switcher.cycle_view) {
-		switcher_finish(server, /*switch_focus*/ false);
-		goto out;
+	if (wl_array_len(&views) <= 0) {
+		wlr_log(WLR_DEBUG, "no views to switch between");
+		wl_array_release(&views);
+		return false;
 	}
 
 	if (rc.window_switcher.show) {
-		/* Display the actual OSD */
+		/* Create OSD */
 		switch (rc.window_switcher.output_criteria) {
 		case SWITCHER_OSD_OUTPUT_ALL: {
 			struct output *output;
 			wl_list_for_each(output, &server->outputs, link) {
-				update_osd_on_output(server, output, osd_impl, &views);
+				get_impl()->create(output, &views);
 			}
 			break;
 		}
 		case SWITCHER_OSD_OUTPUT_POINTER:
-			update_osd_on_output(server,
-				output_nearest_to_cursor(server), osd_impl, &views);
+			get_impl()->create(output_nearest_to_cursor(server), &views);
 			break;
 		case SWITCHER_OSD_OUTPUT_KEYBOARD: {
 			struct output *output;
@@ -353,9 +346,25 @@ update_switcher(struct server *server)
 				/* Fallback to pointer, if there is no active_view */
 				output = output_nearest_to_cursor(server);
 			}
-			update_osd_on_output(server, output, osd_impl, &views);
+			get_impl()->create(output, &views);
 			break;
 		}
+		}
+	}
+
+	wl_array_release(&views);
+	return true;
+}
+
+static void
+update_switcher(struct server *server)
+{
+	if (rc.window_switcher.show) {
+		struct output *output;
+		wl_list_for_each(output, &server->outputs, link) {
+			if (output->switcher_osd.tree) {
+				get_impl()->update(output);
+			}
 		}
 	}
 
@@ -369,7 +378,4 @@ update_switcher(struct server *server)
 			update_preview_outlines(server->switcher.cycle_view);
 		}
 	}
-
-out:
-	wl_array_release(&views);
 }
