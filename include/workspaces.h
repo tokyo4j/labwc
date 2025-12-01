@@ -8,7 +8,6 @@
 
 struct seat;
 struct server;
-struct wlr_scene_tree;
 
 /* Double use: as config in config/rcxml.c and as instance in workspaces.c */
 struct workspace {
@@ -19,7 +18,6 @@ struct workspace {
 	struct server *server;
 
 	char *name;
-	struct wlr_scene_tree *tree;
 
 	struct lab_cosmic_workspace *cosmic_workspace;
 	struct {
