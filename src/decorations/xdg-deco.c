@@ -16,7 +16,7 @@ struct xdg_deco {
 };
 
 static void
-xdg_deco_destroy(struct wl_listener *listener, void *data)
+handle_xdg_deco_destroy(struct wl_listener *listener, void *data)
 {
 	struct xdg_deco *xdg_deco = wl_container_of(listener, xdg_deco, destroy);
 	wl_list_remove(&xdg_deco->destroy.link);
@@ -42,7 +42,7 @@ handle_surface_commit(struct wl_listener *listener, void *data)
 }
 
 static void
-xdg_deco_request_mode(struct wl_listener *listener, void *data)
+handle_request_mode(struct wl_listener *listener, void *data)
 {
 	struct xdg_deco *xdg_deco = wl_container_of(listener, xdg_deco, request_mode);
 	enum wlr_xdg_toplevel_decoration_v1_mode client_mode =
@@ -90,7 +90,7 @@ xdg_deco_request_mode(struct wl_listener *listener, void *data)
 }
 
 static void
-xdg_toplevel_decoration(struct wl_listener *listener, void *data)
+handle_new_decoration(struct wl_listener *listener, void *data)
 {
 	struct wlr_xdg_toplevel_decoration_v1 *wlr_xdg_decoration = data;
 	struct wlr_xdg_surface *xdg_surface = wlr_xdg_decoration->toplevel->base;
@@ -105,13 +105,13 @@ xdg_toplevel_decoration(struct wl_listener *listener, void *data)
 	xdg_deco->view = (struct view *)xdg_surface->data;
 
 	wl_signal_add(&wlr_xdg_decoration->events.destroy, &xdg_deco->destroy);
-	xdg_deco->destroy.notify = xdg_deco_destroy;
+	xdg_deco->destroy.notify = handle_xdg_deco_destroy;
 
 	wl_signal_add(&wlr_xdg_decoration->events.request_mode,
 		&xdg_deco->request_mode);
-	xdg_deco->request_mode.notify = xdg_deco_request_mode;
+	xdg_deco->request_mode.notify = handle_request_mode;
 
-	xdg_deco_request_mode(&xdg_deco->request_mode, wlr_xdg_decoration);
+	handle_request_mode(&xdg_deco->request_mode, wlr_xdg_decoration);
 }
 
 void
@@ -126,7 +126,7 @@ xdg_server_decoration_init(struct server *server)
 
 	wl_signal_add(&xdg_deco_mgr->events.new_toplevel_decoration,
 		&server->xdg_toplevel_decoration);
-	server->xdg_toplevel_decoration.notify = xdg_toplevel_decoration;
+	server->xdg_toplevel_decoration.notify = handle_new_decoration;
 }
 
 void

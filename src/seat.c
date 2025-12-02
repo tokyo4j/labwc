@@ -32,7 +32,7 @@
 #include "view.h"
 
 static void
-input_device_destroy(struct wl_listener *listener, void *data)
+handle_input_device_destroy(struct wl_listener *listener, void *data)
 {
 	struct input *input = wl_container_of(listener, input, destroy);
 	wl_list_remove(&input->link);
@@ -522,7 +522,7 @@ static void
 seat_add_device(struct seat *seat, struct input *input)
 {
 	input->seat = seat;
-	input->destroy.notify = input_device_destroy;
+	input->destroy.notify = handle_input_device_destroy;
 	wl_signal_add(&input->wlr_input_device->events.destroy, &input->destroy);
 	wl_list_insert(&seat->inputs, &input->link);
 
@@ -682,7 +682,7 @@ seat_finish(struct server *server)
 
 	struct input *input, *next;
 	wl_list_for_each_safe(input, next, &seat->inputs, link) {
-		input_device_destroy(&input->destroy, NULL);
+		handle_input_device_destroy(&input->destroy, NULL);
 	}
 
 	if (seat->workspace_osd_timer) {
