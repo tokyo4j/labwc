@@ -670,7 +670,7 @@ server_init(struct server *server)
 	server->constraints = wlr_pointer_constraints_v1_create(
 		server->wl_display);
 
-	server->new_constraint.notify = create_constraint;
+	server->new_constraint.notify = handle_new_constraint;
 	wl_signal_add(&server->constraints->events.new_constraint,
 		&server->new_constraint);
 

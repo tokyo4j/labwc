@@ -779,7 +779,7 @@ handle_constraint_destroy(struct wl_listener *listener, void *data)
 }
 
 void
-create_constraint(struct wl_listener *listener, void *data)
+handle_new_constraint(struct wl_listener *listener, void *data)
 {
 	struct wlr_pointer_constraint_v1 *wlr_constraint = data;
 	struct server *server = wl_container_of(listener, server,

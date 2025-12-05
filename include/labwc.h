@@ -445,7 +445,7 @@ void server_init(struct server *server);
 void server_start(struct server *server);
 void server_finish(struct server *server);
 
-void create_constraint(struct wl_listener *listener, void *data);
+void handle_new_constraint(struct wl_listener *listener, void *data);
 void constrain_cursor(struct server *server, struct wlr_pointer_constraint_v1
 	*constraint);
 
