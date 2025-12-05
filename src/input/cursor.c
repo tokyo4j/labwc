@@ -747,16 +747,6 @@ warp_cursor_to_constraint_hint(struct seat *seat,
 }
 
 static void
-handle_constraint_commit(struct wl_listener *listener, void *data)
-{
-	struct seat *seat = wl_container_of(listener, seat, constraint_commit);
-	struct wlr_pointer_constraint_v1 *constraint = seat->current_constraint;
-	/* Prevents unused variable warning when compiled without asserts */
-	(void)constraint;
-	assert(constraint->surface == data);
-}
-
-static void
 handle_constraint_destroy(struct wl_listener *listener, void *data)
 {
 	struct lab_constraint *constraint = wl_container_of(listener, constraint,
@@ -767,11 +757,6 @@ handle_constraint_destroy(struct wl_listener *listener, void *data)
 	wl_list_remove(&constraint->destroy.link);
 	if (seat->current_constraint == wlr_constraint) {
 		warp_cursor_to_constraint_hint(seat, wlr_constraint);
-
-		if (seat->constraint_commit.link.next) {
-			wl_list_remove(&seat->constraint_commit.link);
-		}
-		wl_list_init(&seat->constraint_commit.link);
 		seat->current_constraint = NULL;
 	}
 
@@ -805,7 +790,6 @@ constrain_cursor(struct server *server, struct wlr_pointer_constraint_v1
 	if (seat->current_constraint == constraint) {
 		return;
 	}
-	wl_list_remove(&seat->constraint_commit.link);
 	if (seat->current_constraint) {
 		if (!constraint) {
 			warp_cursor_to_constraint_hint(seat, seat->current_constraint);
@@ -818,14 +802,10 @@ constrain_cursor(struct server *server, struct wlr_pointer_constraint_v1
 	seat->current_constraint = constraint;
 
 	if (!constraint) {
-		wl_list_init(&seat->constraint_commit.link);
 		return;
 	}
 
 	wlr_pointer_constraint_v1_send_activated(constraint);
-	seat->constraint_commit.notify = handle_constraint_commit;
-	wl_signal_add(&constraint->surface->events.commit,
-		&seat->constraint_commit);
 }
 
 static void

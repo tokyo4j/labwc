@@ -639,7 +639,6 @@ seat_init(struct server *server)
 	}
 
 	wl_list_init(&seat->touch_points);
-	wl_list_init(&seat->constraint_commit.link);
 	wl_list_init(&seat->inputs);
 
 	CONNECT_SIGNAL(server->backend, seat, new_input);

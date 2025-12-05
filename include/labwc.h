@@ -144,8 +144,6 @@ struct seat {
 	struct wl_list tablet_tools;
 	struct wl_list tablet_pads;
 
-	struct wl_listener constraint_commit;
-
 	struct wlr_virtual_pointer_manager_v1 *virtual_pointer;
 	struct wl_listener new_virtual_pointer;
 
