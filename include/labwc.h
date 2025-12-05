@@ -21,6 +21,12 @@ enum input_mode {
 	LAB_INPUT_STATE_CYCLE, /* a.k.a. window switching */
 };
 
+struct lab_constraint {
+	struct seat *seat;
+	struct wlr_pointer_constraint_v1 *constraint;
+	struct wl_listener destroy;
+};
+
 struct seat {
 	struct wlr_seat *seat;
 	struct server *server;

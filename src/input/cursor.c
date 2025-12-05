@@ -40,12 +40,6 @@
 
 #define LAB_CURSOR_SHAPE_V1_VERSION 1
 
-struct constraint {
-	struct seat *seat;
-	struct wlr_pointer_constraint_v1 *constraint;
-	struct wl_listener destroy;
-};
-
 static const char * const *cursor_names = NULL;
 
 /* Usual cursor names */
@@ -765,7 +759,7 @@ handle_constraint_commit(struct wl_listener *listener, void *data)
 static void
 handle_constraint_destroy(struct wl_listener *listener, void *data)
 {
-	struct constraint *constraint = wl_container_of(listener, constraint,
+	struct lab_constraint *constraint = wl_container_of(listener, constraint,
 		destroy);
 	struct wlr_pointer_constraint_v1 *wlr_constraint = data;
 	struct seat *seat = constraint->seat;
@@ -790,7 +784,7 @@ create_constraint(struct wl_listener *listener, void *data)
 	struct wlr_pointer_constraint_v1 *wlr_constraint = data;
 	struct server *server = wl_container_of(listener, server,
 		new_constraint);
-	struct constraint *constraint = znew(*constraint);
+	struct lab_constraint *constraint = znew(*constraint);
 
 	constraint->constraint = wlr_constraint;
 	constraint->seat = &server->seat;
