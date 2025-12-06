@@ -23,7 +23,7 @@ enum input_mode {
 
 struct lab_constraint {
 	struct seat *seat;
-	struct wlr_pointer_constraint_v1 *constraint;
+	struct wlr_pointer_constraint_v1 *wlr_constraint;
 	struct wl_listener destroy;
 };
 
@@ -59,7 +59,7 @@ struct seat {
 		struct wl_listener surface_destroy;
 	} focus_override;
 
-	struct wlr_pointer_constraint_v1 *current_constraint;
+	struct lab_constraint *current_constraint;
 
 	/* Used to hide the workspace OSD after switching workspaces */
 	struct wl_event_source *workspace_osd_timer;
@@ -105,7 +105,8 @@ struct seat {
 
 	struct wl_list inputs;
 	struct wl_listener new_input;
-	struct wl_listener focus_change;
+	struct wl_listener keyboard_focus_change;
+	struct wl_listener pointer_focus_change;
 
 	struct {
 		struct wl_listener motion;
@@ -444,7 +445,6 @@ void server_start(struct server *server);
 void server_finish(struct server *server);
 
 void handle_new_constraint(struct wl_listener *listener, void *data);
-void constrain_cursor(struct server *server, struct wlr_pointer_constraint_v1
-	*constraint);
+void cursor_update_constraint(struct seat *seat);
 
 #endif /* LABWC_H */

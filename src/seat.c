@@ -590,9 +590,9 @@ handle_new_virtual_keyboard(struct wl_listener *listener, void *data)
 }
 
 static void
-handle_focus_change(struct wl_listener *listener, void *data)
+handle_keyboard_focus_change(struct wl_listener *listener, void *data)
 {
-	struct seat *seat = wl_container_of(listener, seat, focus_change);
+	struct seat *seat = wl_container_of(listener, seat, keyboard_focus_change);
 	struct wlr_seat_keyboard_focus_change_event *event = data;
 	struct server *server = seat->server;
 	struct wlr_surface *surface = event->new_surface;
@@ -624,6 +624,15 @@ handle_focus_change(struct wl_listener *listener, void *data)
 		}
 		server->active_view = view;
 	}
+
+	cursor_update_constraint(seat);
+}
+
+static void
+handle_pointer_focus_change(struct wl_listener *listener, void *data)
+{
+	struct seat *seat = wl_container_of(listener, seat, pointer_focus_change);
+	cursor_update_constraint(seat);
 }
 
 void
@@ -642,7 +651,13 @@ seat_init(struct server *server)
 	wl_list_init(&seat->inputs);
 
 	CONNECT_SIGNAL(server->backend, seat, new_input);
-	CONNECT_SIGNAL(&seat->seat->keyboard_state, seat, focus_change);
+
+	seat->keyboard_focus_change.notify = handle_keyboard_focus_change;
+	wl_signal_add(&seat->seat->keyboard_state.events.focus_change,
+		&seat->keyboard_focus_change);
+	seat->pointer_focus_change.notify = handle_pointer_focus_change;
+	wl_signal_add(&seat->seat->pointer_state.events.focus_change,
+		&seat->pointer_focus_change);
 
 	seat->virtual_pointer = wlr_virtual_pointer_manager_v1_create(
 		server->wl_display);
@@ -675,7 +690,8 @@ seat_finish(struct server *server)
 {
 	struct seat *seat = &server->seat;
 	wl_list_remove(&seat->new_input.link);
-	wl_list_remove(&seat->focus_change.link);
+	wl_list_remove(&seat->keyboard_focus_change.link);
+	wl_list_remove(&seat->pointer_focus_change.link);
 	wl_list_remove(&seat->new_virtual_pointer.link);
 	wl_list_remove(&seat->new_virtual_keyboard.link);
 
@@ -809,11 +825,6 @@ seat_focus(struct seat *seat, struct wlr_surface *surface,
 		pressed_sent_keycodes, nr_pressed_sent_keycodes, &kb->modifiers);
 
 	input_method_relay_set_focus(seat->input_method_relay, surface);
-
-	struct wlr_pointer_constraint_v1 *constraint =
-		wlr_pointer_constraints_v1_constraint_for_surface(server->constraints,
-			surface, seat->seat);
-	constrain_cursor(server, constraint);
 }
 
 void

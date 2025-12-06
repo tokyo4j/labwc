@@ -751,12 +751,11 @@ handle_constraint_destroy(struct wl_listener *listener, void *data)
 {
 	struct lab_constraint *constraint = wl_container_of(listener, constraint,
 		destroy);
-	struct wlr_pointer_constraint_v1 *wlr_constraint = data;
 	struct seat *seat = constraint->seat;
 
 	wl_list_remove(&constraint->destroy.link);
-	if (seat->current_constraint == wlr_constraint) {
-		warp_cursor_to_constraint_hint(seat, wlr_constraint);
+	if (seat->current_constraint == constraint) {
+		warp_cursor_to_constraint_hint(seat, constraint->wlr_constraint);
 		seat->current_constraint = NULL;
 	}
 
@@ -771,32 +770,52 @@ handle_new_constraint(struct wl_listener *listener, void *data)
 		new_constraint);
 	struct lab_constraint *constraint = znew(*constraint);
 
-	constraint->constraint = wlr_constraint;
+	constraint->wlr_constraint = wlr_constraint;
 	constraint->seat = &server->seat;
+	wlr_constraint->data = constraint;
+
 	constraint->destroy.notify = handle_constraint_destroy;
 	wl_signal_add(&wlr_constraint->events.destroy, &constraint->destroy);
 
-	struct view *view = server->active_view;
-	if (view && view->surface == wlr_constraint->surface) {
-		constrain_cursor(server, wlr_constraint);
+	cursor_update_constraint(&server->seat);
+}
+
+static struct lab_constraint *
+get_constraint(struct seat *seat)
+{
+	struct wlr_surface *pointer_surface =
+		seat->seat->pointer_state.focused_surface;
+	struct wlr_surface *keyboard_surface =
+		seat->seat->keyboard_state.focused_surface;
+	if (pointer_surface == NULL || pointer_surface != keyboard_surface) {
+		/* TODO: consider subsurfaces */
+		return NULL;
 	}
+
+	struct wlr_pointer_constraint_v1 *wlr_constraint =
+		wlr_pointer_constraints_v1_constraint_for_surface(
+			seat->server->constraints, pointer_surface, seat->seat);
+	if (!wlr_constraint) {
+		return NULL;
+	}
+	return wlr_constraint->data;
 }
 
 void
-constrain_cursor(struct server *server, struct wlr_pointer_constraint_v1
-		*constraint)
+cursor_update_constraint(struct seat *seat)
 {
-	struct seat *seat = &server->seat;
+	struct lab_constraint *constraint = get_constraint(seat);
 	if (seat->current_constraint == constraint) {
 		return;
 	}
 	if (seat->current_constraint) {
 		if (!constraint) {
-			warp_cursor_to_constraint_hint(seat, seat->current_constraint);
+			warp_cursor_to_constraint_hint(
+				seat, seat->current_constraint->wlr_constraint);
 		}
 
 		wlr_pointer_constraint_v1_send_deactivated(
-			seat->current_constraint);
+			seat->current_constraint->wlr_constraint);
 	}
 
 	seat->current_constraint = constraint;
@@ -805,19 +824,21 @@ constrain_cursor(struct server *server, struct wlr_pointer_constraint_v1
 		return;
 	}
 
-	wlr_pointer_constraint_v1_send_activated(constraint);
+	wlr_pointer_constraint_v1_send_activated(constraint->wlr_constraint);
 }
 
 static void
 apply_constraint(struct seat *seat, struct wlr_pointer *pointer, double *x, double *y)
 {
+	struct lab_constraint *constraint = seat->current_constraint;
+
 	if (!seat->server->active_view) {
 		return;
 	}
-	if (!seat->current_constraint || pointer->base.type != WLR_INPUT_DEVICE_POINTER) {
+	if (!constraint || pointer->base.type != WLR_INPUT_DEVICE_POINTER) {
 		return;
 	}
-	assert(seat->current_constraint->type == WLR_POINTER_CONSTRAINT_V1_CONFINED);
+	assert(constraint->wlr_constraint->type == WLR_POINTER_CONSTRAINT_V1_CONFINED);
 
 	double sx = seat->cursor->x;
 	double sy = seat->cursor->y;
@@ -826,7 +847,7 @@ apply_constraint(struct seat *seat, struct wlr_pointer *pointer, double *x, doub
 	sy -= seat->server->active_view->current.y;
 
 	double sx_confined, sy_confined;
-	if (!wlr_region_confine(&seat->current_constraint->region, sx, sy,
+	if (!wlr_region_confine(&constraint->wlr_constraint->region, sx, sy,
 			sx + *x, sy + *y, &sx_confined, &sy_confined)) {
 		return;
 	}
@@ -840,7 +861,8 @@ cursor_locked(struct seat *seat, struct wlr_pointer *pointer)
 {
 	return seat->current_constraint
 		&& pointer->base.type == WLR_INPUT_DEVICE_POINTER
-		&& seat->current_constraint->type == WLR_POINTER_CONSTRAINT_V1_LOCKED;
+		&& seat->current_constraint->wlr_constraint->type
+			== WLR_POINTER_CONSTRAINT_V1_LOCKED;
 }
 
 static void
