@@ -347,10 +347,10 @@ struct view *view_get_root(struct view *view);
  *		printf("%s\n", view_get_string_prop(view, "app_id"));
  *	}
  */
-#define for_each_view(view, head, criteria)           \
-	for (view = view_next(head, NULL, criteria);  \
+#define for_each_view(view, head, current_workspace)           \
+	for (view = view_next(head, NULL, current_workspace);  \
 	     view;                                    \
-	     view = view_next(head, view, criteria))
+	     view = view_next(head, view, current_workspace))
 
 /**
  * for_each_view_reverse() - iterate over all views which match criteria
@@ -378,7 +378,7 @@ struct view *view_get_root(struct view *view);
  * Returns NULL if there are no views matching the criteria.
  */
 struct view *view_next(struct wl_list *head, struct view *view,
-	enum lab_view_criteria criteria);
+	bool current_workspace);
 
 /**
  * view_prev() - Get previous view which matches criteria.
@@ -390,33 +390,7 @@ struct view *view_next(struct wl_list *head, struct view *view,
  * Returns NULL if there are no views matching the criteria.
  */
 struct view *view_prev(struct wl_list *head, struct view *view,
-	enum lab_view_criteria criteria);
-
-/**
- * view_array_append() - Append views that match criteria to array
- * @server: server context
- * @views: arrays to append to
- * @criteria: criteria to match against
- *
- * This function is useful in cases where the calling function may change the
- * stacking order or where it needs to iterate over the views multiple times,
- * for example to get the number of views before processing them.
- *
- * Note: This array has a very short shelf-life so it is intended to be used
- *       with a single-use-throw-away approach.
- *
- * Example usage:
- *	struct view **view;
- *	struct wl_array views;
- *	wl_array_init(&views);
- *	view_array_append(server, &views, LAB_VIEW_CRITERIA_CURRENT_WORKSPACE);
- *	wl_array_for_each(view, &views) {
- *		// Do something with *view
- *	}
- *	wl_array_release(&views);
- */
-void view_array_append(struct server *server, struct wl_array *views,
-	enum lab_view_criteria criteria);
+	bool current_workspace);
 
 enum view_wants_focus view_wants_focus(struct view *view);
 

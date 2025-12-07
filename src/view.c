@@ -261,61 +261,21 @@ view_get_root(struct view *view)
 }
 
 static bool
-matches_criteria(struct view *view, enum lab_view_criteria criteria)
+view_is_in_current_workspace(struct view *view)
 {
-	if (!view_is_focusable(view)) {
-		return false;
+	/*
+	 * Always-on-top views are always on the current desktop and are
+	 * special in that they live in a different tree.
+	 */
+	if (view_is_always_on_top(view)) {
+		return true;
 	}
-	if (criteria & LAB_VIEW_CRITERIA_CURRENT_WORKSPACE) {
-		/*
-		 * Always-on-top views are always on the current desktop and are
-		 * special in that they live in a different tree.
-		 */
-		struct server *server = view->server;
-		if (view->scene_tree->node.parent != server->workspaces.current->tree
-				&& !view_is_always_on_top(view)) {
-			return false;
-		}
-	}
-	if (criteria & LAB_VIEW_CRITERIA_FULLSCREEN) {
-		if (!view->fullscreen) {
-			return false;
-		}
-	}
-	if (criteria & LAB_VIEW_CRITERIA_ALWAYS_ON_TOP) {
-		if (!view_is_always_on_top(view)) {
-			return false;
-		}
-	}
-	if (criteria & LAB_VIEW_CRITERIA_ROOT_TOPLEVEL) {
-		if (view != view_get_root(view)) {
-			return false;
-		}
-	}
-	if (criteria & LAB_VIEW_CRITERIA_NO_ALWAYS_ON_TOP) {
-		if (view_is_always_on_top(view)) {
-			return false;
-		}
-	}
-	if (criteria & LAB_VIEW_CRITERIA_NO_SKIP_WINDOW_SWITCHER) {
-		if (window_rules_get_property(view, "skipWindowSwitcher") == LAB_PROP_TRUE) {
-			return false;
-		}
-	}
-	if (criteria & LAB_VIEW_CRITERIA_NO_OMNIPRESENT) {
-		/*
-		 * TODO: Once always-on-top views use a per-workspace
-		 *       sub-tree we can remove the check from this condition.
-		 */
-		if (view->visible_on_all_workspaces || view_is_always_on_top(view)) {
-			return false;
-		}
-	}
-	return true;
+	return view->scene_tree->node.parent
+		== view->server->workspaces.current->tree;
 }
 
 struct view *
-view_next(struct wl_list *head, struct view *view, enum lab_view_criteria criteria)
+view_next(struct wl_list *head, struct view *view, bool current_workspace)
 {
 	assert(head);
 
@@ -323,15 +283,18 @@ view_next(struct wl_list *head, struct view *view, enum lab_view_criteria criter
 
 	for (elm = elm->next; elm != head; elm = elm->next) {
 		view = wl_container_of(elm, view, link);
-		if (matches_criteria(view, criteria)) {
-			return view;
+		if (!view_is_focusable(view)) {
+			continue;
+		}
+		if (current_workspace && !view_is_in_current_workspace(view)) {
+			continue;
 		}
 	}
 	return NULL;
 }
 
 struct view *
-view_prev(struct wl_list *head, struct view *view, enum lab_view_criteria criteria)
+view_prev(struct wl_list *head, struct view *view, bool current_workspace)
 {
 	assert(head);
 
@@ -339,26 +302,14 @@ view_prev(struct wl_list *head, struct view *view, enum lab_view_criteria criter
 
 	for (elm = elm->prev; elm != head; elm = elm->prev) {
 		view = wl_container_of(elm, view, link);
-		if (matches_criteria(view, criteria)) {
-			return view;
+		if (!view_is_focusable(view)) {
+			continue;
+		}
+		if (current_workspace && !view_is_in_current_workspace(view)) {
+			continue;
 		}
 	}
 	return NULL;
-}
-
-void
-view_array_append(struct server *server, struct wl_array *views,
-		enum lab_view_criteria criteria)
-{
-	struct view *view;
-	for_each_view(view, &server->views, criteria) {
-		struct view **entry = wl_array_add(views, sizeof(*entry));
-		if (!entry) {
-			wlr_log(WLR_ERROR, "wl_array_add(): out of memory");
-			continue;
-		}
-		*entry = view;
-	}
 }
 
 enum view_wants_focus
@@ -1004,7 +955,7 @@ view_cascade(struct view *view)
 		/* Iterate over views from top to bottom */
 		struct view *other_view;
 		for_each_view(other_view, &view->server->views,
-				LAB_VIEW_CRITERIA_CURRENT_WORKSPACE) {
+				/*current_workspace*/ true) {
 			struct wlr_box other = ssd_max_extents(other_view);
 			if (other_view == view
 					|| view->minimized

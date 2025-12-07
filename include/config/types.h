@@ -49,37 +49,6 @@ enum lab_tristate {
 };
 
 /*
- * This enum type is a set of bit flags where each set bit makes the
- * criteria more restrictive. For example:
- *
- * (LAB_VIEW_CRITERIA_FULLSCREEN | LAB_VIEW_CRITERIA_CURRENT_WORKSPACE)
- * matches only fullscreen views on the current workspace, while
- *
- * (LAB_VIEW_CRITERIA_ALWAYS_ON_TOP | LAB_VIEW_CRITERIA_NO_ALWAYS_ON_TOP)
- * would be contradictory and match nothing at all.
- */
-enum lab_view_criteria {
-	/* No filter -> all focusable views */
-	LAB_VIEW_CRITERIA_NONE = 0,
-
-	/*
-	 * Includes always-on-top views, e.g.
-	 * what is visible on the current workspace
-	 */
-	LAB_VIEW_CRITERIA_CURRENT_WORKSPACE       = 1 << 0,
-
-	/* Positive criteria */
-	LAB_VIEW_CRITERIA_FULLSCREEN              = 1 << 1,
-	LAB_VIEW_CRITERIA_ALWAYS_ON_TOP           = 1 << 2,
-	LAB_VIEW_CRITERIA_ROOT_TOPLEVEL           = 1 << 3,
-
-	/* Negative criteria */
-	LAB_VIEW_CRITERIA_NO_ALWAYS_ON_TOP        = 1 << 6,
-	LAB_VIEW_CRITERIA_NO_SKIP_WINDOW_SWITCHER = 1 << 7,
-	LAB_VIEW_CRITERIA_NO_OMNIPRESENT          = 1 << 8,
-};
-
-/*
  * Window types are based on the NET_WM constants from X11. See:
  *   https://specifications.freedesktop.org/wm-spec/1.4/ar01s05.html#id-1.6.7
  *

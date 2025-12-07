@@ -272,8 +272,7 @@ static bool
 workspace_has_views(struct workspace *workspace, struct server *server)
 {
 	struct view *view;
-
-	for_each_view(view, &server->views, LAB_VIEW_CRITERIA_NO_OMNIPRESENT) {
+	for_each_view(view, &server->views, /*current_workspace*/ false) {
 		if (view->workspace == workspace) {
 			return true;
 		}
