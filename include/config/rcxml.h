@@ -177,15 +177,17 @@ struct rcxml {
 
 	/* Window Switcher */
 	struct {
-		bool show;
 		bool preview;
 		bool outlines;
 		bool unshade;
 		enum lab_view_criteria criteria;
-		struct wl_list fields;  /* struct window_switcher_field.link */
-		enum cycle_osd_style style;
-		enum cycle_osd_output_criteria output_criteria;
-		char *thumbnail_label_format;
+		struct {
+			bool show;
+			enum cycle_osd_style style;
+			enum cycle_osd_output_criteria output_criteria;
+			char *thumbnail_label_format;
+			struct wl_list fields;  /* struct cycle_osd_field.link */
+		} osd;
 	} window_switcher;
 
 	struct wl_list window_rules; /* struct window_rule.link */
