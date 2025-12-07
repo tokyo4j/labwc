@@ -20,6 +20,12 @@ wl_list_append(struct wl_list *list, struct wl_list *elm)
 	wl_list_insert(list->prev, elm);
 }
 
+static inline void
+wl_list_append_list(struct wl_list *list, struct wl_list *other)
+{
+	wl_list_insert_list(list->prev, other);
+}
+
 /**
  * WL_LIST_INIT() - initialize a list when defining it
  * @head: pointer to the head of the list to be initialized

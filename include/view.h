@@ -128,6 +128,14 @@ struct view_impl {
 	pid_t (*get_pid)(struct view *view);
 };
 
+enum view_layer {
+	LAB_VIEW_LAYER_BOTTOM,
+	LAB_VIEW_LAYER_NORMAL,
+	LAB_VIEW_LAYER_TOP,
+
+	NR_LAB_VIEW_LAYERS,
+};
+
 struct view {
 	struct server *server;
 	enum view_type type;
@@ -187,6 +195,7 @@ struct view {
 	enum lab_edge edges_visible;
 	bool inhibits_keybinds; /* also inhibits mousebinds */
 	xkb_layout_index_t keyboard_layout;
+	enum view_layer layer;
 
 	/* Pointer to an output owned struct region, may be NULL */
 	struct region *tiled_region;
@@ -518,8 +527,6 @@ void view_toggle_maximize(struct view *view, enum view_axis axis);
 bool view_wants_decorations(struct view *view);
 void view_toggle_decorations(struct view *view);
 
-bool view_is_always_on_top(struct view *view);
-bool view_is_always_on_bottom(struct view *view);
 bool view_is_omnipresent(struct view *view);
 void view_toggle_always_on_top(struct view *view);
 void view_toggle_always_on_bottom(struct view *view);

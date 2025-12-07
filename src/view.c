@@ -272,8 +272,7 @@ matches_criteria(struct view *view, enum lab_view_criteria criteria)
 		 * special in that they live in a different tree.
 		 */
 		struct server *server = view->server;
-		if (view->scene_tree->node.parent != server->workspaces.current->tree
-				&& !view_is_always_on_top(view)) {
+		if (view->scene_tree->node.parent != server->workspaces.current->tree) {
 			return false;
 		}
 	}
@@ -283,7 +282,7 @@ matches_criteria(struct view *view, enum lab_view_criteria criteria)
 		}
 	}
 	if (criteria & LAB_VIEW_CRITERIA_ALWAYS_ON_TOP) {
-		if (!view_is_always_on_top(view)) {
+		if (view->layer != LAB_VIEW_LAYER_TOP) {
 			return false;
 		}
 	}
@@ -293,7 +292,7 @@ matches_criteria(struct view *view, enum lab_view_criteria criteria)
 		}
 	}
 	if (criteria & LAB_VIEW_CRITERIA_NO_ALWAYS_ON_TOP) {
-		if (view_is_always_on_top(view)) {
+		if (view->layer == LAB_VIEW_LAYER_TOP) {
 			return false;
 		}
 	}
@@ -303,11 +302,7 @@ matches_criteria(struct view *view, enum lab_view_criteria criteria)
 		}
 	}
 	if (criteria & LAB_VIEW_CRITERIA_NO_OMNIPRESENT) {
-		/*
-		 * TODO: Once always-on-top views use a per-workspace
-		 *       sub-tree we can remove the check from this condition.
-		 */
-		if (view->visible_on_all_workspaces || view_is_always_on_top(view)) {
+		if (view->visible_on_all_workspaces) {
 			return false;
 		}
 	}
@@ -1513,48 +1508,50 @@ view_toggle_decorations(struct view *view)
 	}
 }
 
-bool
-view_is_always_on_top(struct view *view)
+static void
+restack_views(struct wl_list *views)
 {
-	assert(view);
-	return view->scene_tree->node.parent ==
-		view->server->view_tree_always_on_top;
+	struct wl_list views_by_layer[NR_LAB_VIEW_LAYERS];
+	wl_list_init(&views_by_layer[LAB_VIEW_LAYER_BOTTOM]);
+	wl_list_init(&views_by_layer[LAB_VIEW_LAYER_NORMAL]);
+	wl_list_init(&views_by_layer[LAB_VIEW_LAYER_TOP]);
+
+	struct view *view, *tmp;
+	wl_list_for_each_safe(view, tmp, views, link) {
+		wl_list_remove(&view->link);
+		wl_list_append(&views_by_layer[view->layer], &view->link);
+	}
+	wl_list_append_list(views, &views_by_layer[LAB_VIEW_LAYER_TOP]);
+	wl_list_append_list(views, &views_by_layer[LAB_VIEW_LAYER_NORMAL]);
+	wl_list_append_list(views, &views_by_layer[LAB_VIEW_LAYER_BOTTOM]);
+
+	wl_list_for_each_reverse(view, views, link) {
+		wlr_scene_node_raise_to_top(&view->scene_tree->node);
+	}
 }
 
 void
 view_toggle_always_on_top(struct view *view)
 {
 	assert(view);
-	if (view_is_always_on_top(view)) {
-		view->workspace = view->server->workspaces.current;
-		wlr_scene_node_reparent(&view->scene_tree->node,
-			view->workspace->tree);
+	if (view->layer == LAB_VIEW_LAYER_TOP) {
+		view->layer = LAB_VIEW_LAYER_NORMAL;
 	} else {
-		wlr_scene_node_reparent(&view->scene_tree->node,
-			view->server->view_tree_always_on_top);
+		view->layer = LAB_VIEW_LAYER_TOP;
 	}
-}
-
-bool
-view_is_always_on_bottom(struct view *view)
-{
-	assert(view);
-	return view->scene_tree->node.parent ==
-		view->server->view_tree_always_on_bottom;
+	restack_views(&view->server->views);
 }
 
 void
 view_toggle_always_on_bottom(struct view *view)
 {
 	assert(view);
-	if (view_is_always_on_bottom(view)) {
-		view->workspace = view->server->workspaces.current;
-		wlr_scene_node_reparent(&view->scene_tree->node,
-			view->workspace->tree);
+	if (view->layer == LAB_VIEW_LAYER_BOTTOM) {
+		view->layer = LAB_VIEW_LAYER_NORMAL;
 	} else {
-		wlr_scene_node_reparent(&view->scene_tree->node,
-			view->server->view_tree_always_on_bottom);
+		view->layer = LAB_VIEW_LAYER_BOTTOM;
 	}
+	restack_views(&view->server->views);
 }
 
 void
@@ -2216,7 +2213,7 @@ move_to_front(struct view *view)
 {
 	wl_list_remove(&view->link);
 	wl_list_insert(&view->server->views, &view->link);
-	wlr_scene_node_raise_to_top(&view->scene_tree->node);
+	restack_views(&view->server->views);
 }
 
 static void
@@ -2224,7 +2221,7 @@ move_to_back(struct view *view)
 {
 	wl_list_remove(&view->link);
 	wl_list_append(&view->server->views, &view->link);
-	wlr_scene_node_lower_to_bottom(&view->scene_tree->node);
+	restack_views(&view->server->views);
 }
 
 /*
@@ -2523,6 +2520,7 @@ view_init(struct view *view)
 
 	view->title = xstrdup("");
 	view->app_id = xstrdup("");
+	view->layer = LAB_VIEW_LAYER_NORMAL;
 }
 
 void

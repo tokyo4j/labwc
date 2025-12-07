@@ -187,7 +187,8 @@ struct server {
 	struct wlr_xdg_toplevel_icon_manager_v1 *xdg_toplevel_icon_manager;
 	struct wl_listener xdg_toplevel_icon_set_icon;
 
-	struct wl_list views;
+	/* The head in this list is the topmost view */
+	struct wl_list views; /* struct view.link */
 	struct wl_list unmanaged_surfaces;
 
 	struct seat seat;
@@ -229,9 +230,8 @@ struct server {
 	 */
 	struct wlr_scene_tree *xdg_popup_tree;
 
-	/* Tree for all non-layer xdg/xwayland-shell surfaces with always-on-top/below */
-	struct wlr_scene_tree *view_tree_always_on_top;
-	struct wlr_scene_tree *view_tree_always_on_bottom;
+	struct wlr_scene_tree *cycle_preview_tree;
+
 #if HAVE_XWAYLAND
 	/* Tree for unmanaged xsurfaces without initialized view (usually popups) */
 	struct wlr_scene_tree *unmanaged_tree;

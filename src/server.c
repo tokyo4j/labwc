@@ -563,31 +563,29 @@ server_init(struct server *server)
 	 * z-order for nodes which cover the whole work-area.  For per-output
 	 * scene-trees, see handle_new_output() in src/output.c
 	 *
-	 * | Type                | Scene Tree       | Per Output | Example
-	 * | ------------------- | ---------------- | ---------- | -------
-	 * | ext-session         | lock-screen      | Yes        | swaylock
-	 * | window switcher OSD | cycle_osd_tree   | Yes        |
-	 * | compositor-menu     | menu_tree        | No         | root-menu
-	 * | layer-shell         | layer-popups     | Yes        |
-	 * | layer-shell         | overlay-layer    | Yes        |
-	 * | layer-shell         | top-layer        | Yes        | waybar
-	 * | xwayland-OR         | unmanaged        | No         | dmenu
-	 * | xdg-popups          | xdg-popups       | No         |
-	 * | toplevels windows   | always-on-top    | No         |
-	 * | toplevels windows   | normal           | No         | firefox
-	 * | toplevels windows   | always-on-bottom | No         | pcmanfm-qt --desktop
-	 * | layer-shell         | bottom-layer     | Yes        | waybar
-	 * | layer-shell         | background-layer | Yes        | swaybg
+	 * | Scene Tree                  | Description
+	 * | -------------------------   | -------------------------------------
+	 * | output->session_lock_tree   | ext-session surfaces (e.g. swaylock)
+	 * | output->cycle_osd_tree      | OSD for window switcher
+	 * | server->cycle_preview_tree  | previewed window in window switcher
+	 * | server->menu_tree           | labwc's menus
+	 * | output->layer_popup_tree[0] | xdg-popups of layer-shell surfaces
+	 * | output->layer_tree[3]       | overlay layer-shell surfaces (e.g. fuzzel)
+	 * | output->layer_tree[2]       | top layer-shell surfaces (e.g. waybar)
+	 * | server->unmanaged_tree      | unmanaged surfaces in X11 (e.g. dmenu)
+	 * | server->xdg_popup_tree      | xdg_popups of xdg-shell surfaces
+	 * | server->view_tree           | xdg-shell/X11 windows (e.g. firefox)
+	 * | output->layer_tree[1]       | bottom layer-shell surfaces
+	 * | output->layer_tree[0]       | background layer-shell surfaces (e.g. swaybg)
 	 */
 
-	server->view_tree_always_on_bottom = wlr_scene_tree_create(&server->scene->tree);
 	server->view_tree = wlr_scene_tree_create(&server->scene->tree);
-	server->view_tree_always_on_top = wlr_scene_tree_create(&server->scene->tree);
 	server->xdg_popup_tree = wlr_scene_tree_create(&server->scene->tree);
 #if HAVE_XWAYLAND
 	server->unmanaged_tree = wlr_scene_tree_create(&server->scene->tree);
 #endif
 	server->menu_tree = wlr_scene_tree_create(&server->scene->tree);
+	server->cycle_preview_tree = wlr_scene_tree_create(&server->scene->tree);
 
 	workspaces_init(server);
 
