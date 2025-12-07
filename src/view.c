@@ -1519,7 +1519,12 @@ restack_views(struct wl_list *views)
 	struct view *view, *tmp;
 	wl_list_for_each_safe(view, tmp, views, link) {
 		wl_list_remove(&view->link);
-		wl_list_append(&views_by_layer[view->layer], &view->link);
+		enum view_layer layer = view->layer;
+		if (view->fullscreen && layer == LAB_VIEW_LAYER_TOP) {
+			/* Put always-on-top fullscreen views at normal layer */
+			layer = LAB_VIEW_LAYER_NORMAL;
+		}
+		wl_list_append(&views_by_layer[layer], &view->link);
 	}
 	wl_list_append_list(views, &views_by_layer[LAB_VIEW_LAYER_TOP]);
 	wl_list_append_list(views, &views_by_layer[LAB_VIEW_LAYER_NORMAL]);
@@ -1665,6 +1670,10 @@ set_fullscreen(struct view *view, bool fullscreen)
 	/* Show fullscreen views above top-layer */
 	if (view->output) {
 		desktop_update_top_layer_visibility(view->server);
+	}
+
+	if (view->layer == LAB_VIEW_LAYER_TOP) {
+		restack_views(&view->server->views);
 	}
 }
 
