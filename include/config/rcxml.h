@@ -180,7 +180,7 @@ struct rcxml {
 		bool preview;
 		bool outlines;
 		bool unshade;
-		enum lab_view_criteria criteria;
+		bool all_workspaces;
 		struct {
 			bool show;
 			enum cycle_osd_style style;

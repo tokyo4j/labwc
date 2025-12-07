@@ -334,6 +334,8 @@ void view_query_free(struct view_query *view);
  */
 bool view_matches_query(struct view *view, struct view_query *query);
 
+struct view *view_get_root(struct view *view);
+
 /**
  * for_each_view() - iterate over all views which match criteria
  * @view: Iterator.

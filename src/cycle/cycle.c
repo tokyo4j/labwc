@@ -16,6 +16,7 @@
 #include "ssd.h"
 #include "theme.h"
 #include "view.h"
+#include "window-rules.h"
 
 static bool init_cycle(struct server *server);
 static void update_cycle(struct server *server);
@@ -281,7 +282,16 @@ static bool
 init_cycle(struct server *server)
 {
 	struct view *view;
-	for_each_view(view, &server->views, rc.window_switcher.criteria) {
+	for_each_view(view, &server->views, !rc.window_switcher.all_workspaces) {
+		if (window_rules_get_property(view, "skipWindowSwitcher")
+				== LAB_PROP_TRUE) {
+			continue;
+		}
+		if (view != view_get_root(view)) {
+			/* Skip views with a parent e.g. dialogs */
+			continue;
+		}
+
 		wl_list_append(&server->cycle.views, &view->cycle_link);
 	}
 	if (wl_list_empty(&server->cycle.views)) {
