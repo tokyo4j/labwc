@@ -22,12 +22,6 @@ struct workspace {
 	struct wlr_scene_tree *tree;
 
 	struct wlr_ext_workspace_handle_v1 *ext_workspace;
-	struct {
-		struct wl_listener activate;
-		struct wl_listener deactivate;
-		struct wl_listener assign;
-		struct wl_listener remove;
-	} on_ext;
 };
 
 void workspaces_init(struct server *server);

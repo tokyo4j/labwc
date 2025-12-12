@@ -181,11 +181,27 @@ _osd_update(struct server *server)
 }
 
 static void
-handle_ext_workspace_activate(struct wl_listener *listener, void *data)
+handle_ext_workspace_commit(struct wl_listener *listener, void *data)
 {
-	struct workspace *workspace = wl_container_of(listener, workspace, on_ext.activate);
-	workspaces_switch_to(workspace, /* update_focus */ true);
-	wlr_log(WLR_INFO, "ext activating workspace %s", workspace->name);
+	struct server *server = wl_container_of(listener, server,
+		workspaces.on_ext_manager.commit);
+	struct wlr_ext_workspace_v1_commit_event *event = data;
+
+	struct wlr_ext_workspace_v1_request *req;
+	wl_list_for_each(req, event->requests, link) {
+		if (req->type == WLR_EXT_WORKSPACE_V1_REQUEST_ACTIVATE) {
+			struct wlr_ext_workspace_v1_request_activate *activate_req =
+				(struct wlr_ext_workspace_v1_request_activate *)req;
+			struct workspace *workspace = NULL;
+			wl_list_for_each(workspace, &server->workspaces.all, link) {
+				if (workspace->ext_workspace == activate_req->workspace) {
+					workspaces_switch_to(workspace, /* update_focus */ true);
+					wlr_log(WLR_INFO, "ext activating workspace %s", workspace->name);
+					break;
+				}
+			}
+		}
+	}
 }
 
 /* Internal API */
@@ -213,10 +229,6 @@ add_workspace(struct server *server, const char *name)
 		workspace->ext_workspace, server->workspaces.ext_group);
 	wlr_ext_workspace_handle_v1_set_name(workspace->ext_workspace, name);
 	wlr_ext_workspace_handle_v1_set_active(workspace->ext_workspace, active);
-
-	workspace->on_ext.activate.notify = handle_ext_workspace_activate;
-	wl_signal_add(&workspace->ext_workspace->events.activate,
-		&workspace->on_ext.activate);
 }
 
 static struct workspace *
@@ -364,6 +376,11 @@ workspaces_init(struct server *server)
 
 	server->workspaces.ext_group = wlr_ext_workspace_group_handle_v1_create(
 		server->workspaces.ext_manager, /*caps*/ 0);
+
+	server->workspaces.on_ext_manager.commit.notify =
+		handle_ext_workspace_commit;
+	wl_signal_add(&server->workspaces.ext_manager->events.commit,
+		&server->workspaces.on_ext_manager.commit);
 
 	wl_list_init(&server->workspaces.all);
 
@@ -517,7 +534,6 @@ destroy_workspace(struct workspace *workspace)
 	wlr_scene_node_destroy(&workspace->tree->node);
 	zfree(workspace->name);
 	wl_list_remove(&workspace->link);
-	wl_list_remove(&workspace->on_ext.activate.link);
 
 	wlr_ext_workspace_handle_v1_destroy(workspace->ext_workspace);
 	free(workspace);
@@ -604,4 +620,5 @@ workspaces_destroy(struct server *server)
 		destroy_workspace(workspace);
 	}
 	assert(wl_list_empty(&server->workspaces.all));
+	wl_list_remove(&server->workspaces.on_ext_manager.commit.link);
 }
