@@ -95,6 +95,13 @@ struct cycle_osd_impl {
 	void (*update)(struct output *output);
 };
 
+#define SCROLLBAR_W 10
+
+void cycle_osd_scroll_init(struct output *output, int x, int y, int h,
+	int item_height, int nr_cols, int nr_rows, int nr_visible_rows,
+	float *border_color, float *bg_color);
+void cycle_osd_scroll_update(struct output *output);
+
 extern struct cycle_osd_impl cycle_osd_classic_impl;
 extern struct cycle_osd_impl cycle_osd_thumbnail_impl;
 
