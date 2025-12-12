@@ -250,6 +250,9 @@ struct server {
 		struct {
 			struct wl_listener layout_output_added;
 		} on;
+		struct {
+			struct wl_listener commit;
+		} on_ext_manager;
 	} workspaces;
 
 	struct wl_list outputs;
