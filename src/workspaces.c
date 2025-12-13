@@ -500,6 +500,33 @@ workspaces_osd_hide(struct seat *seat)
 	cursor_update_focus(server);
 }
 
+static struct workspace *
+workspace_find_by_name(struct server *server, const char *name)
+{
+	struct workspace *workspace;
+
+	/* by index */
+	size_t parsed_index = parse_workspace_index(name);
+	if (parsed_index) {
+		size_t index = 0;
+		wl_list_for_each(workspace, &server->workspaces.all, link) {
+			if (parsed_index == ++index) {
+				return workspace;
+			}
+		}
+	}
+
+	/* by name */
+	wl_list_for_each(workspace, &server->workspaces.all, link) {
+		if (!strcmp(workspace->name, name)) {
+			return workspace;
+		}
+	}
+
+	wlr_log(WLR_ERROR, "Workspace '%s' not found", name);
+	return NULL;
+}
+
 struct workspace *
 workspaces_find(struct workspace *anchor, const char *name, bool wrap)
 {
@@ -507,21 +534,13 @@ workspaces_find(struct workspace *anchor, const char *name, bool wrap)
 	if (!name) {
 		return NULL;
 	}
-	size_t index = 0;
-	struct workspace *target;
-	size_t wants_index = parse_workspace_index(name);
-	struct wl_list *workspaces = &anchor->server->workspaces.all;
+	struct server *server = anchor->server;
+	struct wl_list *workspaces = &server->workspaces.all;
 
-	if (wants_index) {
-		wl_list_for_each(target, workspaces, link) {
-			if (wants_index == ++index) {
-				return target;
-			}
-		}
-	} else if (!strcasecmp(name, "current")) {
+	if (!strcasecmp(name, "current")) {
 		return anchor;
 	} else if (!strcasecmp(name, "last")) {
-		return anchor->server->workspaces.last;
+		return server->workspaces.last;
 	} else if (!strcasecmp(name, "left")) {
 		return get_prev(anchor, workspaces, wrap);
 	} else if (!strcasecmp(name, "right")) {
@@ -530,15 +549,8 @@ workspaces_find(struct workspace *anchor, const char *name, bool wrap)
 		return get_prev_occupied(anchor, workspaces, wrap);
 	} else if (!strcasecmp(name, "right-occupied")) {
 		return get_next_occupied(anchor, workspaces, wrap);
-	} else {
-		wl_list_for_each(target, workspaces, link) {
-			if (!strcasecmp(target->name, name)) {
-				return target;
-			}
-		}
 	}
-	wlr_log(WLR_ERROR, "Workspace '%s' not found", name);
-	return NULL;
+	return workspace_find_by_name(server, name);
 }
 
 static void
