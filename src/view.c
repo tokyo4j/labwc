@@ -2363,11 +2363,7 @@ view_toggle_keybinds(struct view *view)
 {
 	assert(view);
 	view->inhibits_keybinds = !view->inhibits_keybinds;
-
-	if (view->ssd_mode) {
-		ssd_enable_keybind_inhibit_indicator(view->ssd,
-			view->inhibits_keybinds);
-	}
+	ssd_enable_keybind_inhibit(view->ssd, view->inhibits_keybinds);
 }
 
 bool

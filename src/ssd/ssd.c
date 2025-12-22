@@ -172,7 +172,7 @@ ssd_create(struct view *view, bool active)
 	}
 	ssd->margin = ssd_thickness(view);
 	ssd_set_active(ssd, active);
-	ssd_enable_keybind_inhibit_indicator(ssd, view->inhibits_keybinds);
+	ssd_enable_keybind_inhibit(ssd, view->inhibits_keybinds);
 	ssd->state.geometry = view->current;
 
 	return ssd;
@@ -340,16 +340,12 @@ ssd_enable_shade(struct ssd *ssd, bool enable)
 }
 
 void
-ssd_enable_keybind_inhibit_indicator(struct ssd *ssd, bool enable)
+ssd_enable_keybind_inhibit(struct ssd *ssd, bool enable)
 {
 	if (!ssd) {
 		return;
 	}
-
-	float *color = enable
-		? rc.theme->window_toggled_keybinds_color
-		: rc.theme->window[SSD_ACTIVE].border_color;
-	wlr_scene_rect_set_color(ssd->border.subtrees[SSD_ACTIVE].top, color);
+	ssd_titlebar_update(ssd);
 }
 
 bool

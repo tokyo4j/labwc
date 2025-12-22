@@ -19,9 +19,6 @@ window.titlebar.padding.height: 0
 window.active.border.color: #aaaaaa
 window.inactive.border.color: #aaaaaa
 
-# ToggleKeybinds status indicator
-window.active.indicator.toggled-keybind.color: #ff0000
-
 # window titlebar background
 window.active.title.bg.color: #e1dedb
 window.inactive.title.bg.color: #f6f5f4

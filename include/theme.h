@@ -70,7 +70,6 @@ struct theme {
 
 	int titlebar_height;
 
-	float window_toggled_keybinds_color[4];
 	enum lab_justification window_label_text_justify;
 
 	/* buttons */
