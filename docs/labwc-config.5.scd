@@ -607,6 +607,7 @@ extending outward from the snapped edge.
 	- 'close': close
 	- 'shade': shade toggle
 	- 'desk': all-desktops toggle
+	- 'keybind': keybinds toggle
 
 	A colon deliminator is used to separate buttons on the left and right,
 	whereas commas are used to separate items within a section. It is
@@ -880,6 +881,7 @@ input-devices by the Wayland protocol.
 	- Shade: A button that, by default, toggles window shading.
 	- AllDesktops: A button that, by default, toggles omnipresence of a
 	  window.
+	- Keybind: A button that, by default, toggles keybinds.
 	- Close: A button that, by default, closses a window.
 	- Border: The window's border including Top...BRCorner below.
 	- Top: The top edge of the window's border.

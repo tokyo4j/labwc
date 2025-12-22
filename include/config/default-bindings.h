@@ -292,6 +292,11 @@ static struct mouse_combos {
 		.event = "Click",
 		.action = "ToggleOmnipresent",
 	}, {
+		.context = "Keybind",
+		.button = "Left",
+		.event = "Click",
+		.action = "ToggleKeybinds",
+	}, {
 		.context = "Maximize",
 		.button = "Right",
 		.event = "Click",

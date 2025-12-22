@@ -318,6 +318,16 @@ load_buttons(struct theme *theme)
 		.type = LAB_NODE_BUTTON_OMNIPRESENT,
 		.state_set = LAB_BS_TOGGLED,
 	}, {
+		.name = "keybind",
+		.fallback_button = (const char[]){ 0x0c, 0x1e, 0x33, 0x33, 0x1e, 0x0c },
+		.type = LAB_NODE_BUTTON_KEYBIND,
+		.state_set = 0,
+	}, {
+		.name = "keybind_toggled",
+		.fallback_button = (const char[]){ 0x0c, 0x1e, 0x3f, 0x3f, 0x1e, 0x0c },
+		.type = LAB_NODE_BUTTON_KEYBIND,
+		.state_set = LAB_BS_TOGGLED,
+	}, {
 		.name = "close",
 		.fallback_button = (const char[]){ 0x33, 0x3f, 0x1e, 0x1e, 0x3f, 0x33 },
 		.type = LAB_NODE_BUTTON_CLOSE,
@@ -363,6 +373,17 @@ load_buttons(struct theme *theme)
 		.name = "desk_toggled_hover",
 		.alt_name = "desk_hover_toggled",
 		.type = LAB_NODE_BUTTON_OMNIPRESENT,
+		.state_set = LAB_BS_TOGGLED | LAB_BS_HOVERED,
+		/* no fallback (non-hover variant is used instead) */
+	}, {
+		.name = "keybind_hover",
+		.type = LAB_NODE_BUTTON_KEYBIND,
+		.state_set = LAB_BS_HOVERED,
+		/* no fallback (non-hover variant is used instead) */
+	}, {
+		.name = "keybind_toggled_hover",
+		.alt_name = "keybind_hover_toggled",
+		.type = LAB_NODE_BUTTON_KEYBIND,
 		.state_set = LAB_BS_TOGGLED | LAB_BS_HOVERED,
 		/* no fallback (non-hover variant is used instead) */
 	}, {
@@ -539,8 +560,6 @@ theme_builtin(struct theme *theme, struct server *server)
 
 	parse_hexstr("#aaaaaa", theme->window[SSD_ACTIVE].border_color);
 	parse_hexstr("#aaaaaa", theme->window[SSD_INACTIVE].border_color);
-
-	parse_hexstr("#ff0000", theme->window_toggled_keybinds_color);
 
 	theme->window[SSD_ACTIVE].title_bg.gradient = LAB_GRADIENT_NONE;
 	theme->window[SSD_INACTIVE].title_bg.gradient = LAB_GRADIENT_NONE;
@@ -723,7 +742,9 @@ entry(struct theme *theme, const char *key, const char *value)
 	}
 
 	if (match_glob(key, "window.active.indicator.toggled-keybind.color")) {
-		parse_color(value, theme->window_toggled_keybinds_color);
+		wlr_log(WLR_ERROR, "window.active.indicator.toggled-keybind.color "
+			"is no longer supported. Use 'keybind' button in "
+			"<theme><titlebar><layout> instead.");
 	}
 
 	if (match_glob(key, "window.active.title.bg")) {

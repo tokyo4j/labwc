@@ -299,6 +299,12 @@ ssd_titlebar_update(struct ssd *ssd)
 		ssd->state.was_omnipresent = view->visible_on_all_workspaces;
 	}
 
+	if (ssd->state.was_keybind_inhibited != view->inhibits_keybinds) {
+		set_alt_button_icon(ssd, LAB_NODE_BUTTON_KEYBIND,
+			view->inhibits_keybinds);
+		ssd->state.was_keybind_inhibited = view->inhibits_keybinds;
+	}
+
 	if (width == ssd->state.geometry.width) {
 		return;
 	}
