@@ -356,9 +356,9 @@ load_buttons(struct theme *theme)
 		/* no fallback (non-hover variant is used instead) */
 	}, {
 		.name = "desk_hover",
-		/* no fallback (non-hover variant is used instead) */
 		.type = LAB_NODE_BUTTON_OMNIPRESENT,
 		.state_set = LAB_BS_HOVERED,
+		/* no fallback (non-hover variant is used instead) */
 	}, {
 		.name = "desk_toggled_hover",
 		.alt_name = "desk_hover_toggled",
