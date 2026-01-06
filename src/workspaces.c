@@ -216,13 +216,23 @@ handle_ext_workspace_commit(struct wl_listener *listener, void *data)
 
 	struct wlr_ext_workspace_v1_request *req;
 	wl_list_for_each(req, event->requests, link) {
-		if (req->type == WLR_EXT_WORKSPACE_V1_REQUEST_ACTIVATE) {
-			struct wlr_ext_workspace_v1_request_activate *activate_req =
-				(struct wlr_ext_workspace_v1_request_activate *)req;
-			struct workspace *workspace = activate_req->workspace->data;
-
-			workspaces_switch_to(workspace, /* update_focus */ true);
-			wlr_log(WLR_INFO, "ext activating workspace %s", workspace->name);
+		switch (req->type) {
+		case WLR_EXT_WORKSPACE_V1_REQUEST_CREATE_WORKSPACE:
+			wlr_log(WLR_ERROR, "creating workspace %s", req->u.create_workspace.name);
+			break;
+		case WLR_EXT_WORKSPACE_V1_REQUEST_ACTIVATE:
+			wlr_log(WLR_ERROR, "activating workspace %s", req->u.activate.workspace->name);
+			break;
+		case WLR_EXT_WORKSPACE_V1_REQUEST_DEACTIVATE:
+			wlr_log(WLR_ERROR, "deactivating workspace %s", req->u.deactivate.workspace->name);
+			break;
+		case WLR_EXT_WORKSPACE_V1_REQUEST_ASSIGN:
+			wlr_log(WLR_ERROR, "assigning workspace %s to group",
+				req->u.assign.workspace->name);
+			break;
+		case WLR_EXT_WORKSPACE_V1_REQUEST_REMOVE:
+			wlr_log(WLR_ERROR, "removing workspace %s", req->u.remove.workspace->name);
+			break;
 		}
 	}
 }
