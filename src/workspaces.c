@@ -214,26 +214,29 @@ handle_ext_workspace_commit(struct wl_listener *listener, void *data)
 		workspaces.on_ext_manager.commit);
 	struct wlr_ext_workspace_v1_commit_event *event = data;
 
-	struct wlr_ext_workspace_v1_request *req;
-	wl_list_for_each(req, event->requests, link) {
-		switch (req->type) {
-		case WLR_EXT_WORKSPACE_V1_REQUEST_CREATE_WORKSPACE:
-			wlr_log(WLR_ERROR, "creating workspace %s", req->u.create_workspace.name);
-			break;
-		case WLR_EXT_WORKSPACE_V1_REQUEST_ACTIVATE:
-			wlr_log(WLR_ERROR, "activating workspace %s", req->u.activate.workspace->name);
-			break;
-		case WLR_EXT_WORKSPACE_V1_REQUEST_DEACTIVATE:
-			wlr_log(WLR_ERROR, "deactivating workspace %s", req->u.deactivate.workspace->name);
-			break;
-		case WLR_EXT_WORKSPACE_V1_REQUEST_ASSIGN:
-			wlr_log(WLR_ERROR, "assigning workspace %s to group",
-				req->u.assign.workspace->name);
-			break;
-		case WLR_EXT_WORKSPACE_V1_REQUEST_REMOVE:
-			wlr_log(WLR_ERROR, "removing workspace %s", req->u.remove.workspace->name);
-			break;
+	char **create_ws_name;
+	wl_array_for_each(create_ws_name, &event->create_workspaces) {
+		wlr_log(WLR_ERROR, "creating ws %s", *create_ws_name);
+	}
+	struct wlr_ext_workspace_v1_workspace_update *update_ws;
+	wl_array_for_each(update_ws, &event->update_workspaces) {
+		if (update_ws->fields & WLR_EXT_WORKSPACE_V1_WORKSPACE_UPDATE_ASSIGN) {
+			wlr_log(WLR_ERROR, "assigning ws %s to group",
+				update_ws->workspace->name);
 		}
+		if (update_ws->fields & WLR_EXT_WORKSPACE_V1_WORKSPACE_UPDATE_ACTIVATED) {
+			if (update_ws->activated) {
+				wlr_log(WLR_ERROR, "activating ws %s",
+					update_ws->workspace->name);
+			} else {
+				wlr_log(WLR_ERROR, "deactivating ws %s",
+					update_ws->workspace->name);
+			}
+		}
+	}
+	struct wlr_ext_workspace_handle_v1 **remove_ws;
+	wl_array_for_each(remove_ws, &event->remove_workspaces) {
+		wlr_log(WLR_ERROR, "removing ws %s", (*remove_ws)->name);
 	}
 }
 
