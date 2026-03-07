@@ -19,7 +19,6 @@ void magnifier_set_scale(struct server *server, enum magnify_dir dir);
 bool output_wants_magnification(struct output *output);
 void magnifier_draw(struct output *output, struct wlr_buffer *output_buffer,
 	struct wlr_box *damage);
-bool magnifier_is_enabled(void);
 void magnifier_reset(void);
 
 #endif /* LABWC_MAGNIFIER_H */

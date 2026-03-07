@@ -14,9 +14,6 @@
 #include "output.h"
 #include "theme.h"
 
-static bool magnify_on;
-static double mag_scale = 0.0;
-
 /* Reuse a single scratch buffer */
 static struct wlr_buffer *tmp_buffer = NULL;
 static struct wlr_texture *tmp_texture = NULL;
@@ -42,6 +39,7 @@ void
 magnifier_draw(struct output *output, struct wlr_buffer *output_buffer, struct wlr_box *damage)
 {
 	struct server *server = output->server;
+	struct magnifier_state *mag = &server->magnifier;
 	struct theme *theme = server->theme;
 	bool fullscreen = (rc.mag_width == -1 || rc.mag_height == -1);
 
@@ -67,10 +65,10 @@ magnifier_draw(struct output *output, struct wlr_buffer *output_buffer, struct w
 		return;
 	}
 
-	if (mag_scale == 0.0) {
-		mag_scale = rc.mag_scale;
+	if (mag->scale == 0.0) {
+		mag->scale = rc.mag_scale;
 	}
-	assert(mag_scale >= 1.0);
+	assert(mag->scale >= 1.0);
 
 	/* Magnifier geometry in physical output coordinate */
 	struct wlr_box mag_box;
@@ -185,18 +183,18 @@ magnifier_draw(struct output *output, struct wlr_buffer *output_buffer, struct w
 	}
 
 	struct wlr_fbox src_box_for_paste = {
-		.width = mag_box.width / mag_scale,
-		.height = mag_box.height / mag_scale,
+		.width = mag_box.width / mag->scale,
+		.height = mag_box.height / mag->scale,
 	};
 
 	if (fullscreen) {
-		src_box_for_paste.x = cursor_pos.x - (cursor_pos.x / mag_scale);
-		src_box_for_paste.y = cursor_pos.y - (cursor_pos.y / mag_scale);
+		src_box_for_paste.x = cursor_pos.x - (cursor_pos.x / mag->scale);
+		src_box_for_paste.y = cursor_pos.y - (cursor_pos.y / mag->scale);
 	} else {
 		src_box_for_paste.x =
-			mag_box.width * (mag_scale - 1.0) / (2.0 * mag_scale);
+			mag_box.width * (mag->scale - 1.0) / (2.0 * mag->scale);
 		src_box_for_paste.y =
-			mag_box.height * (mag_scale - 1.0) / (2.0 * mag_scale);
+			mag_box.height * (mag->scale - 1.0) / (2.0 * mag->scale);
 	}
 
 	/* Paste the magnified result back into the output buffer */
@@ -224,8 +222,9 @@ output_wants_magnification(struct output *output)
 {
 	static double x = -1;
 	static double y = -1;
-	struct wlr_cursor *cursor = output->server->seat.cursor;
-	if (!magnify_on) {
+	struct server *server = output->server;
+	struct wlr_cursor *cursor = server->seat.cursor;
+	if (!server->magnifier.enabled) {
 		x = -1;
 		y = -1;
 		return false;
@@ -235,22 +234,28 @@ output_wants_magnification(struct output *output)
 	}
 	x = cursor->x;
 	y = cursor->y;
-	return output_nearest_to_cursor(output->server) == output;
+	return output_nearest_to_cursor(server) == output;
 }
 
 static void
 enable_magnifier(struct server *server, bool enable)
 {
-	magnify_on = enable;
-	server->scene->WLR_PRIVATE.direct_scanout = enable ? false
-		: server->direct_scanout_enabled;
+	if (server->magnifier.enabled == enable) {
+		return;
+	}
+	server->magnifier.enabled = enable;
+
+	struct output *output;
+	wl_list_for_each(output, &server->outputs, link) {
+		wlr_output_lock_attach_render(output->wlr_output, enable);
+	}
 }
 
 /* Toggles magnification on and off */
 void
 magnifier_toggle(struct server *server)
 {
-	enable_magnifier(server, !magnify_on);
+	enable_magnifier(server, !server->magnifier.enabled);
 
 	struct output *output = output_nearest_to_cursor(server);
 	if (output) {
@@ -263,17 +268,18 @@ void
 magnifier_set_scale(struct server *server, enum magnify_dir dir)
 {
 	struct output *output = output_nearest_to_cursor(server);
+	struct magnifier_state *mag = &server->magnifier;
 
 	if (dir == MAGNIFY_INCREASE) {
-		if (magnify_on) {
-			mag_scale += rc.mag_increment;
+		if (mag->enabled) {
+			mag->scale += rc.mag_increment;
 		} else {
 			enable_magnifier(server, true);
-			mag_scale = 1.0 + rc.mag_increment;
+			mag->scale = 1.0 + rc.mag_increment;
 		}
 	} else {
-		if (magnify_on && mag_scale > 1.0 + rc.mag_increment) {
-			mag_scale -= rc.mag_increment;
+		if (mag->enabled && mag->scale > 1.0 + rc.mag_increment) {
+			mag->scale -= rc.mag_increment;
 		} else {
 			enable_magnifier(server, false);
 		}
@@ -294,11 +300,4 @@ magnifier_reset(void)
 		tmp_buffer = NULL;
 		tmp_texture = NULL;
 	}
-}
-
-/* Report whether magnification is enabled */
-bool
-magnifier_is_enabled(void)
-{
-	return magnify_on;
 }

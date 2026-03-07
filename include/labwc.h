@@ -273,6 +273,11 @@ struct server {
 
 	struct wl_listener renderer_lost;
 
+	struct magnifier_state {
+		bool enabled;
+		float scale;
+	} magnifier;
+
 	struct wlr_gamma_control_manager_v1 *gamma_control_manager_v1;
 	struct wl_listener gamma_control_set_gamma;
 
