@@ -472,6 +472,11 @@ handle_cycle_view_key(struct keyinfo *keyinfo)
 			/* Esc deactivates window switcher */
 			cycle_finish(/*switch_focus*/ false);
 			return true;
+		case XKB_KEY_Return:
+		case XKB_KEY_KP_Enter:
+			/* Enter accepts the currently selected window */
+			cycle_finish(/*switch_focus*/ true);
+			return true;
 		case XKB_KEY_Up:
 		case XKB_KEY_Left:
 			/* Up/Left cycles the window backward */
