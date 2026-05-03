@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "input/key-state.h"
+#include "input/key-state-indicator.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <wlr/types/wlr_keyboard.h>

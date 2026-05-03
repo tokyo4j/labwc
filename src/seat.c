@@ -25,7 +25,7 @@
 #include "input/tablet-pad.h"
 #include "input/input.h"
 #include "input/keyboard.h"
-#include "input/key-state.h"
+#include "input/key-state-indicator.h"
 #include "labwc.h"
 #include "output.h"
 #include "session-lock.h"

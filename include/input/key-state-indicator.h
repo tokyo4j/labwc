@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-#ifndef LABWC_KEY_STATE_H
-#define LABWC_KEY_STATE_H
+#ifndef LABWC_KEY_STATE_INDICATOR_H
+#define LABWC_KEY_STATE_INDICATOR_H
 
 struct seat;
 
@@ -13,4 +13,4 @@ struct seat;
 void key_state_indicator_update(struct seat *seat);
 void key_state_indicator_toggle(void);
 
-#endif /* LABWC_KEY_STATE_H */
+#endif /* LABWC_KEY_STATE_INDICATOR_H */

@@ -14,7 +14,7 @@
 #include "cycle.h"
 #include "idle.h"
 #include "input/ime.h"
-#include "input/key-state.h"
+#include "input/key-state-indicator.h"
 #include "labwc.h"
 #include "menu/menu.h"
 #include "session-lock.h"
